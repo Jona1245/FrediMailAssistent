@@ -1,0 +1,9 @@
+venv/
+__pycache__/
+*.pyc
+config.json
+config.key
+contacts.json
+style_examples/
+*.log
+.env

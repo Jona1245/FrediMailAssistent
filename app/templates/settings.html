@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="de" data-theme="{{ theme }}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Einstellungen – E-Mail-Assistent</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<style>
+/* ── page layout ── */
+body { min-height: 100vh; }
+header { padding: 12px 24px; gap: 16px; }
+.back-btn { background: var(--card); border: 1px solid var(--border);
+            color: var(--text2); border-radius: 8px; padding: 8px 16px;
+            cursor: pointer; font-size: 14px; text-decoration: none;
+            transition: all .2s; }
+.back-btn:hover { color: var(--text); border-color: var(--accent); }
+.container { max-width: 820px; margin: 0 auto; padding: 24px 20px; }
+
+/* ── section cards ── */
+.section { background: var(--card); border: 1px solid var(--border);
+           border-radius: var(--radius); margin-bottom: 20px; overflow: hidden; }
+.section-header { padding: 14px 20px; background: var(--card2);
+                  border-bottom: 1px solid var(--border);
+                  font-size: 14px; font-weight: 700; color: var(--text);
+                  display: flex; align-items: center; gap: 10px; }
+.section-body { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+
+/* ── fields ── */
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+label { font-size: 13px; font-weight: 600; color: var(--text2); }
+
+/* ── connection test ── */
+.conn-row { display: flex; gap: 10px; align-items: flex-end; }
+.conn-row .form-input { flex: 1; }
+.conn-status { font-size: 13px; font-weight: 600; padding: 8px 14px;
+               border-radius: 8px; display: none; }
+.conn-ok  { background: rgba(67,160,71,.2);  color: #66bb6a; display: block !important; }
+.conn-err { background: rgba(229,57,53,.2);  color: #ef5350; display: block !important; }
+
+/* ── dropdown wrapper ── */
+.select-wrapper { position: relative; }
+.select-wrapper select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath fill='%239ba4c0' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 12px center;
+}
+
+/* ── style examples list ── */
+.style-list  { display: flex; flex-direction: column; gap: 8px; }
+.style-item  { display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+               background: var(--bg2); border: 1px solid var(--border);
+               border-radius: 8px; font-size: 14px; }
+.style-item span { flex: 1; }
+.no-examples { color: var(--text3); font-size: 14px; }
+.file-upload-btn { display: inline-block; padding: 10px 18px; background: var(--bg2);
+                   border: 1px dashed var(--border2); border-radius: 8px;
+                   cursor: pointer; font-size: 14px; color: var(--text2);
+                   text-align: center; transition: border .2s; }
+.file-upload-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── sticky save bar ── */
+.save-bar { position: sticky; bottom: 0; background: var(--bg2);
+            border-top: 1px solid var(--border); padding: 14px 20px;
+            display: flex; align-items: center; gap: 14px; z-index: 100; }
+.save-status { font-size: 14px; font-weight: 600; }
+.save-ok  { color: #66bb6a; }
+.save-err { color: #ef5350; }
+
+/* Toast sits above the save bar */
+#toast { bottom: 70px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⚙ Einstellungen</h1>
+  <a href="/" class="back-btn">← Zurück zur App</a>
+  <button class="btn btn-outline btn-sm" onclick="toggleTheme()">☀ Theme</button>
+</header>
+
+<div class="container">
+
+  <!-- ── Postfach 1 ── -->
+  <div class="section">
+    <div class="section-header">📥 Postfach 1 — Eingang (E-Mails lesen)</div>
+    <div class="section-body">
+      <div class="field">
+        <label>Anbieter-Schnellwahl</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button type="button" class="btn btn-outline btn-sm" onclick="setProvider1('gmail')">Gmail</button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="setProvider1('outlook')">Outlook / Office 365</button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="setProvider1('webde')">web.de</button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="setProvider1('gmx')">GMX</button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="setProvider1('fredi1')">Fredi (pv-hartlaub)</button>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>IMAP-Server</label>
+          <input type="text" id="imap1_host" class="form-input"
+                 value="{{ config.imap1_host }}" placeholder="outlook.office365.com">
+        </div>
+        <div class="field">
+          <label>Port</label>
+          <input type="number" id="imap1_port" class="form-input"
+                 value="{{ config.imap1_port }}" placeholder="993">
+        </div>
+      </div>
+      <div class="field">
+        <label>E-Mail-Adresse</label>
+        <input type="email" id="imap1_email" class="form-input"
+               value="{{ config.imap1_email }}" placeholder="fredi@pv-hartlaub.de">
+      </div>
+      <div class="field">
+        <label>Passwort / App-Passwort</label>
+        <input type="password" id="imap1_password" class="form-input"
+               value="{{ config.imap1_password }}" placeholder="••••••••"
+               autocomplete="new-password">
+        <div class="hint">
+          <b>Outlook/Office 365:</b> App-Passwort unter <a href="https://account.microsoft.com/security" target="_blank">account.microsoft.com/security</a> erstellen.<br>
+          <b>Gmail:</b> 2-Faktor-Auth aktivieren, dann App-Passwort unter <a href="https://myaccount.google.com/apppasswords" target="_blank">myaccount.google.com/apppasswords</a> erstellen.
+        </div>
+      </div>
+      <div class="conn-row">
+        <button class="btn btn-outline btn-sm" onclick="testConn(1)">
+          Verbindung testen
+        </button>
+        <span id="conn-status-1" class="conn-status"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Postfach 2 ── -->
+  <div class="section">
+    <div class="section-header">📤 Postfach 2 — Ausgang (E-Mails senden)</div>
+    <div class="section-body">
+      <div class="field">
+        <label>Anbieter-Schnellwahl</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button type="button" class="btn btn-outline btn-sm" onclick="setProvider2('gmail')">Gmail</button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="setProvider2('outlook')">Outlook / Office 365</button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="setProvider2('webde')">web.de</button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="setProvider2('gmx')">GMX</button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="setProvider2('fredi2')">Fredi (sunpropower)</button>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>IMAP-Server</label>
+          <input type="text" id="imap2_host" class="form-input"
+                 value="{{ config.imap2_host }}" placeholder="imap.mxhichina.com">
+        </div>
+        <div class="field">
+          <label>IMAP-Port</label>
+          <input type="number" id="imap2_port" class="form-input"
+                 value="{{ config.imap2_port }}" placeholder="993">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>SMTP-Server</label>
+          <input type="text" id="smtp2_host" class="form-input"
+                 value="{{ config.smtp2_host }}" placeholder="smtp.mxhichina.com">
+        </div>
+        <div class="field">
+          <label>SMTP-Port</label>
+          <input type="number" id="smtp2_port" class="form-input"
+                 value="{{ config.smtp2_port }}" placeholder="465">
+        </div>
+      </div>
+      <div class="field">
+        <label>SMTP-Verbindungstyp</label>
+        <div class="select-wrapper">
+          <select id="smtp2_type" class="form-input">
+            <option value="ssl" {% if config.smtp2_type != 'starttls' %}selected{% endif %}>SSL — Port 465 (Gmail, mxhichina)</option>
+            <option value="starttls" {% if config.smtp2_type == 'starttls' %}selected{% endif %}>STARTTLS — Port 587 (web.de, GMX, Outlook)</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>E-Mail-Adresse</label>
+        <input type="email" id="imap2_email" class="form-input"
+               value="{{ config.imap2_email }}" placeholder="hartlaub@sunpropower.com">
+      </div>
+      <div class="field">
+        <label>Passwort</label>
+        <input type="password" id="imap2_password" class="form-input"
+               value="{{ config.imap2_password }}" placeholder="••••••••"
+               autocomplete="new-password">
+      </div>
+      <div class="conn-row">
+        <button class="btn btn-outline btn-sm" onclick="testConn(2)">
+          Verbindung testen
+        </button>
+        <span id="conn-status-2" class="conn-status"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Claude API ── -->
+  <div class="section">
+    <div class="section-header">🤖 Claude API (Künstliche Intelligenz)</div>
+    <div class="section-body">
+      <div class="field">
+        <label>API-Key</label>
+        <input type="password" id="claude_api_key" class="form-input"
+               value="{{ config.claude_api_key }}" placeholder="sk-ant-..."
+               autocomplete="new-password">
+        <div class="hint">
+          Erhältlich unter
+          <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>
+        </div>
+      </div>
+      <div class="field">
+        <label>Modell</label>
+        <div class="select-wrapper">
+          <select id="claude_model" class="form-input">
+            <option value="claude-haiku-4-5-20251001"
+              {% if config.claude_model == 'claude-haiku-4-5-20251001' %}selected{% endif %}>
+              Haiku 4.5 — schnell &amp; günstig (empfohlen)
+            </option>
+            <option value="claude-sonnet-4-6"
+              {% if config.claude_model == 'claude-sonnet-4-6' %}selected{% endif %}>
+              Sonnet 4.6 — besser, etwas teurer
+            </option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── System-Prompt ── -->
+  <div class="section">
+    <div class="section-header">💬 KI-Anweisungen (System-Prompt)</div>
+    <div class="section-body">
+      <div class="field">
+        <label>Anweisungen für die KI</label>
+        <textarea id="system_prompt" class="form-input"
+                  style="min-height:140px">{{ config.system_prompt }}</textarea>
+        <div class="hint">
+          Beschreibt Fredis Schreibstil und allgemeine Regeln für die E-Mail-Generierung.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Filter rules ── -->
+  <div class="section">
+    <div class="section-header">🔒 Filterregeln (nicht an Kunden weitergeben)</div>
+    <div class="section-body">
+      <div class="field">
+        <label>Eine Regel pro Zeile</label>
+        <textarea id="filter_rules" class="form-input"
+                  style="min-height:110px">{{ config.filter_rules }}</textarea>
+        <div class="hint">
+          Diese Begriffe/Informationen werden niemals in Kunden-E-Mails erwähnt.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Style examples ── -->
+  <div class="section">
+    <div class="section-header">📝 Stil-Beispiele (E-Mails von Fredi)</div>
+    <div class="section-body">
+      <div class="hint" style="margin-bottom:8px">
+        Lege hier fertige E-Mails von Fredi ab (als .txt-Datei).
+        Die KI lernt daraus seinen Schreibstil.
+      </div>
+      <div id="style-list" class="style-list">
+        <div class="no-examples">Wird geladen…</div>
+      </div>
+      <div style="margin-top:12px">
+        <label for="style-upload" class="file-upload-btn">
+          + Neue .txt-Datei hochladen
+        </label>
+        <input type="file" id="style-upload" accept=".txt" multiple
+               style="display:none" onchange="uploadStyleExample()">
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Save bar -->
+<div class="save-bar">
+  <button class="btn btn-success" onclick="saveAll()">💾 Einstellungen speichern</button>
+  <span id="save-status" class="save-status"></span>
+</div>
+
+<div id="toast"></div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  loadStyleExamples();
+});
+
+function toggleTheme() {
+  const html = document.documentElement;
+  const next = html.dataset.theme === 'dark' ? 'light' : 'dark';
+  html.dataset.theme = next;
+}
+
+function showToast(msg, type='ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `show toast-${type}`;
+  setTimeout(() => { t.className = ''; }, 4000);
+}
+
+async function saveAll() {
+  const status = document.getElementById('save-status');
+  const fields = [
+    'imap1_host','imap1_port','imap1_email','imap1_password',
+    'imap2_host','imap2_port','smtp2_host','smtp2_port','smtp2_type','imap2_email','imap2_password',
+    'claude_api_key','claude_model','system_prompt','filter_rules',
+  ];
+  const data = {};
+  for (const f of fields) {
+    const el = document.getElementById(f);
+    if (el) data[f] = el.value;
+  }
+  data.theme = document.documentElement.dataset.theme;
+
+  try {
+    const r = await fetch('/api/config', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(data),
+    });
+    const res = await r.json();
+    if (res.success) {
+      status.textContent = '✓ Gespeichert!';
+      status.className = 'save-status save-ok';
+      showToast('Einstellungen gespeichert!', 'ok');
+    } else {
+      status.textContent = '✕ Fehler beim Speichern.';
+      status.className = 'save-status save-err';
+    }
+  } catch(e) {
+    status.textContent = '✕ Verbindungsfehler.';
+    status.className = 'save-status save-err';
+  }
+  setTimeout(() => { status.textContent = ''; status.className = 'save-status'; }, 5000);
+}
+
+async function testConn(mailbox) {
+  const statusEl = document.getElementById(`conn-status-${mailbox}`);
+  statusEl.className = 'conn-status';
+  statusEl.textContent = 'Wird getestet…';
+  statusEl.style.display = 'block';
+
+  const pw = mailbox === 1
+    ? document.getElementById('imap1_password').value
+    : document.getElementById('imap2_password').value;
+
+  try {
+    await saveAll();
+    const r = await fetch('/api/test-connection', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ mailbox, password: pw }),
+    });
+    const data = await r.json();
+    if (data.success) {
+      statusEl.textContent = '✓ Verbindung erfolgreich!';
+      statusEl.className = 'conn-status conn-ok';
+    } else {
+      statusEl.textContent = '✕ ' + (data.error || 'Verbindung fehlgeschlagen.');
+      statusEl.className = 'conn-status conn-err';
+    }
+  } catch(e) {
+    statusEl.textContent = '✕ Verbindung fehlgeschlagen.';
+    statusEl.className = 'conn-status conn-err';
+  }
+}
+
+async function loadStyleExamples() {
+  const r = await fetch('/api/style-examples');
+  const files = await r.json();
+  const container = document.getElementById('style-list');
+  if (!files.length) {
+    container.innerHTML = '<div class="no-examples">Noch keine Stil-Beispiele vorhanden.</div>';
+    return;
+  }
+  container.innerHTML = files.map(f => `
+    <div class="style-item" id="se-${esc(f)}">
+      📄 <span>${esc(f)}</span>
+      <button class="btn btn-danger btn-sm" onclick="deleteStyleExample('${esc(f)}')">
+        Löschen
+      </button>
+    </div>
+  `).join('');
+}
+
+async function uploadStyleExample() {
+  const input = document.getElementById('style-upload');
+  for (const file of input.files) {
+    const fd = new FormData();
+    fd.append('file', file);
+    const r = await fetch('/api/style-examples/upload', { method: 'POST', body: fd });
+    const data = await r.json();
+    if (data.error) showToast(data.error, 'err');
+  }
+  input.value = '';
+  loadStyleExamples();
+  showToast('Stil-Beispiel hochgeladen!', 'ok');
+}
+
+async function deleteStyleExample(filename) {
+  if (!confirm(`"${filename}" wirklich löschen?`)) return;
+  await fetch(`/api/style-examples/${encodeURIComponent(filename)}`, { method: 'DELETE' });
+  loadStyleExamples();
+  showToast('Stil-Beispiel gelöscht.', 'ok');
+}
+
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+const IMAP_PRESETS = {
+  gmail:   { host: 'imap.gmail.com',               port: 993 },
+  outlook: { host: 'outlook.office365.com',         port: 993 },
+  webde:   { host: 'imap.web.de',                   port: 993 },
+  gmx:     { host: 'imap.gmx.net',                  port: 993 },
+  fredi1:  { host: 'outlook.office365.com',         port: 993 },
+  fredi2:  { host: 'imap.mxhichina.com',            port: 993 },
+};
+const SMTP_PRESETS = {
+  gmail:   { host: 'smtp.gmail.com',                port: 465, type: 'ssl'      },
+  outlook: { host: 'smtp-mail.outlook.com',         port: 587, type: 'starttls' },
+  webde:   { host: 'smtp.web.de',                   port: 587, type: 'starttls' },
+  gmx:     { host: 'mail.gmx.net',                  port: 587, type: 'starttls' },
+  fredi2:  { host: 'smtp.mxhichina.com',            port: 465, type: 'ssl'      },
+};
+
+function setProvider1(key) {
+  const p = IMAP_PRESETS[key];
+  if (!p) return;
+  document.getElementById('imap1_host').value = p.host;
+  document.getElementById('imap1_port').value = p.port;
+}
+
+function setProvider2(key) {
+  const pi = IMAP_PRESETS[key];
+  const ps = SMTP_PRESETS[key];
+  if (pi) {
+    document.getElementById('imap2_host').value = pi.host;
+    document.getElementById('imap2_port').value = pi.port;
+  }
+  if (ps) {
+    document.getElementById('smtp2_host').value = ps.host;
+    document.getElementById('smtp2_port').value = ps.port;
+    document.getElementById('smtp2_type').value = ps.type;
+  }
+}
+</script>
+</body>
+</html>
