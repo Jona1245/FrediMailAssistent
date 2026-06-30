@@ -21,11 +21,6 @@ app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 25 * 1024 * 1024  # 25 MB upload limit
 
 _ERRORS = {
-    'microsoft_auth_failed': (
-        'Microsoft blockiert die Anmeldung. '
-        'Bitte ein App-Passwort in deinem Microsoft-Konto erstellen: '
-        'https://account.microsoft.com/security → "App-Kennwörter".'
-    ),
     'login_failed': 'Anmeldung fehlgeschlagen. Bitte Zugangsdaten in den Einstellungen prüfen.',
     'connection_failed': 'Verbindung fehlgeschlagen. Bitte Internetverbindung und Server-Einstellungen prüfen.',
     'fetch_failed': 'E-Mails konnten nicht geladen werden. Bitte erneut versuchen.',
@@ -44,7 +39,24 @@ MASKED = '••••••••'
 SECRET_FIELDS = ('imap1_password', 'imap2_password', 'claude_api_key')
 
 
-def err(code):
+def _provider_hint(host):
+    h = (host or '').lower()
+    if 'office365' in h or 'outlook' in h:
+        return ('Microsoft blockiert die Anmeldung. Bitte ein App-Passwort erstellen: '
+                'https://account.microsoft.com/security → "App-Kennwörter".')
+    if 'gmail' in h:
+        return ('Google blockiert die Anmeldung. Bitte ein App-Passwort erstellen '
+                '(2-Faktor-Auth muss aktiv sein): https://myaccount.google.com/apppasswords')
+    if 'web.de' in h or 'gmx' in h:
+        return ('Anmeldung fehlgeschlagen. Bei web.de/GMX muss der IMAP-Zugriff zuerst in den '
+                'Webmail-Einstellungen freigeschaltet werden: Einstellungen → POP3/IMAP/Weiterleitung → '
+                '"Zugriff per IMAP zulassen" aktivieren.')
+    return 'Anmeldung fehlgeschlagen. Bitte Zugangsdaten in den Einstellungen prüfen.'
+
+
+def err(code, host=None):
+    if code == 'auth_blocked':
+        return _provider_hint(host)
     return _ERRORS.get(code, 'Ein unbekannter Fehler ist aufgetreten. Bitte erneut versuchen.')
 
 
@@ -78,7 +90,7 @@ def api_emails():
         return jsonify({'error': 'Postfach 1 nicht konfiguriert. Bitte Einstellungen öffnen.'})
     emails, error = get_unread_emails(config)
     if error:
-        return jsonify({'error': err(error)})
+        return jsonify({'error': err(error, config.get('imap1_host'))})
     return jsonify({'emails': emails})
 
 
@@ -87,7 +99,7 @@ def api_email(uid):
     config = load_config()
     content, error = get_email_content(config, uid)
     if error:
-        return jsonify({'error': err(error)})
+        return jsonify({'error': err(error, config.get('imap1_host'))})
     return jsonify(content)
 
 
@@ -110,7 +122,7 @@ def api_mark_read():
     config = load_config()
     error = mark_as_read(config, uid)
     if error:
-        return jsonify({'error': err(error)})
+        return jsonify({'error': err(error, config.get('imap1_host'))})
     return jsonify({'success': True})
 
 
@@ -238,7 +250,8 @@ def api_test_connection():
 
     error = test_imap1(config) if mailbox == 1 else test_imap2(config)
     if error:
-        return jsonify({'error': err(error)})
+        host = config.get('imap1_host') if mailbox == 1 else config.get('imap2_host')
+        return jsonify({'error': err(error, host)})
     return jsonify({'success': True})
 
 

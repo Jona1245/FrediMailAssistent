@@ -80,7 +80,7 @@ def connect_imap1(config):
     except imapclient.exceptions.LoginError as e:
         msg = str(e)
         if any(x in msg for x in ('AUTHENTICATIONFAILED', '535', 'credentials')):
-            return None, 'microsoft_auth_failed'
+            return None, 'auth_blocked'
         return None, 'login_failed'
     except Exception:
         return None, 'connection_failed'
@@ -91,7 +91,10 @@ def connect_imap2(config):
         client = _imap_client(config['imap2_host'], config['imap2_port'])
         client.login(config['imap2_email'], config['imap2_password'])
         return client, None
-    except imapclient.exceptions.LoginError:
+    except imapclient.exceptions.LoginError as e:
+        msg = str(e)
+        if any(x in msg for x in ('AUTHENTICATIONFAILED', '535', 'credentials')):
+            return None, 'auth_blocked'
         return None, 'login_failed'
     except Exception:
         return None, 'connection_failed'
