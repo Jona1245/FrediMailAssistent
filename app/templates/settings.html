@@ -354,16 +354,17 @@ async function testConn(mailbox) {
   statusEl.textContent = 'Wird getestet…';
   statusEl.style.display = 'block';
 
-  const pw = mailbox === 1
-    ? document.getElementById('imap1_password').value
-    : document.getElementById('imap2_password').value;
+  const prefix = mailbox === 1 ? 'imap1' : 'imap2';
+  const pw    = document.getElementById(`${prefix}_password`).value;
+  const host  = document.getElementById(`${prefix}_host`).value;
+  const port  = document.getElementById(`${prefix}_port`).value;
+  const email = document.getElementById(`${prefix}_email`).value;
 
   try {
-    await saveAll();
     const r = await fetch('/api/test-connection', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ mailbox, password: pw }),
+      body: JSON.stringify({ mailbox, password: pw, host, port, email }),
     });
     const data = await r.json();
     if (data.success) {

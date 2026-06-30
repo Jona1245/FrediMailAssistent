@@ -1,6 +1,7 @@
 import os
 import sys
 import io
+import re
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -37,6 +38,13 @@ _ERRORS = {
 
 MASKED = '••••••••'
 SECRET_FIELDS = ('imap1_password', 'imap2_password', 'claude_api_key')
+
+_ALLOWED_CONFIG_KEYS = {
+    'imap1_host', 'imap1_port', 'imap1_email', 'imap1_password',
+    'imap2_host', 'imap2_port', 'smtp2_host', 'smtp2_port', 'smtp2_type',
+    'imap2_email', 'imap2_password',
+    'claude_api_key', 'claude_model', 'system_prompt', 'filter_rules', 'theme',
+}
 
 
 def _provider_hint(host):
@@ -108,6 +116,8 @@ def api_email(uid):
 
 @app.route('/api/attachment/<att_id>')
 def api_attachment(att_id):
+    if not re.match(r'^\d+_\d+$', att_id):
+        abort(404)
     att = get_attachment(att_id)
     if not att:
         abort(404)
@@ -121,7 +131,7 @@ def api_attachment(att_id):
 
 @app.route('/api/mark-read', methods=['POST'])
 def api_mark_read():
-    uid = request.json.get('uid')
+    uid = (request.json or {}).get('uid')
     config = load_config()
     error = mark_as_read(config, uid)
     if error:
@@ -182,7 +192,10 @@ def api_send():
         return jsonify({'error': err(error)})
 
     if source_uid:
-        mark_as_read(config, int(source_uid))
+        try:
+            mark_as_read(config, int(source_uid))
+        except (ValueError, TypeError):
+            pass
 
     if to_email:
         contacts = load_contacts()
@@ -230,6 +243,8 @@ def api_save_config():
     data = request.json or {}
     config = load_config()
     for key, value in data.items():
+        if key not in _ALLOWED_CONFIG_KEYS:
+            continue
         if value == MASKED:
             continue
         config[key] = value
@@ -243,13 +258,15 @@ def api_test_connection():
     mailbox = data.get('mailbox', 1)
     config = load_config()
 
-    # Allow testing with a freshly entered password (not yet saved)
+    prefix = 'imap1' if mailbox == 1 else 'imap2'
+    for field in ('host', 'port', 'email'):
+        val = str(data.get(field, '')).strip()
+        if val:
+            config[f'{prefix}_{field}'] = val
+
     test_pw = data.get('password', '')
     if test_pw and test_pw != MASKED:
-        if mailbox == 1:
-            config['imap1_password'] = test_pw
-        else:
-            config['imap2_password'] = test_pw
+        config[f'{prefix}_password'] = test_pw
 
     error = test_imap1(config) if mailbox == 1 else test_imap2(config)
     if error:

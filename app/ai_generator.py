@@ -64,6 +64,8 @@ def generate_email(source_text, customer_name, customer_email, config):
             system=system,
             messages=[{'role': 'user', 'content': user_msg}],
         )
+        if not resp.content:
+            return None, 'api_error'
         text = resp.content[0].text.strip()
 
         subject = ''
