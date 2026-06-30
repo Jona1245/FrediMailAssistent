@@ -47,6 +47,9 @@ def _provider_hint(host):
     if 'gmail' in h:
         return ('Google blockiert die Anmeldung. Bitte ein App-Passwort erstellen '
                 '(2-Faktor-Auth muss aktiv sein): https://myaccount.google.com/apppasswords')
+    if 'mail.com' in h:
+        return ('Anmeldung fehlgeschlagen. Bitte Passwort prüfen. Falls IMAP noch nicht aktiviert: '
+                'In mail.com-Einstellungen → POP3 & IMAP → einschalten.')
     if 'web.de' in h or 'gmx' in h:
         return ('Anmeldung fehlgeschlagen. Bei web.de/GMX muss der IMAP-Zugriff zuerst in den '
                 'Webmail-Einstellungen freigeschaltet werden: Einstellungen → POP3/IMAP/Weiterleitung → '
