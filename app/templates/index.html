@@ -6,151 +6,370 @@
 <title>E-Mail-Assistent – SunProPower</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <style>
-/* ── page layout ── */
 html, body { height: 100%; overflow: hidden; }
 body { display: flex; flex-direction: column; }
-header { padding: 10px 18px; gap: 12px; flex-shrink: 0; }
-.header-btns { display: flex; gap: 8px; align-items: center; }
-.btn-icon { background: var(--card); border: 1px solid var(--border);
-            color: var(--text2); border-radius: 8px; padding: 7px 12px;
-            cursor: pointer; font-size: 15px; transition: all .2s; }
-.btn-icon:hover { background: var(--card2); color: var(--text); }
-.refresh-btn { font-size: 13px; padding: 7px 14px; }
-.main { display: grid; grid-template-columns: 25% 40% 35%; flex: 1; overflow: hidden; }
 
-/* ── columns ── */
-.col { display: flex; flex-direction: column; overflow: hidden;
-       border-right: 1px solid var(--border); }
+/* ── Header ── */
+header { padding: 0 20px; height: 52px; flex-shrink: 0; gap: 14px; }
+.header-btns { display: flex; gap: 6px; align-items: center; }
+.btn-icon {
+  background: var(--card);
+  border: 1px solid var(--border2);
+  color: var(--text2);
+  border-radius: 9px;
+  padding: 7px 13px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--font);
+  transition: all .18s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+}
+.btn-icon:hover { background: var(--card2); color: var(--text); border-color: var(--accent); }
+
+/* ── 3-column layout ── */
+.main {
+  display: grid;
+  grid-template-columns: 280px 1fr 360px;
+  flex: 1;
+  overflow: hidden;
+}
+.col {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-right: 1px solid var(--border);
+}
 .col:last-child { border-right: none; }
-.col-header { padding: 12px 14px; background: var(--bg2);
-              border-bottom: 1px solid var(--border);
-              font-size: 13px; font-weight: 600; color: var(--text2);
-              text-transform: uppercase; letter-spacing: .5px;
-              display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+.col-header {
+  padding: 0 16px;
+  height: 44px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: .7px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
 .col-body { flex: 1; overflow-y: auto; }
 
-/* ── email list ── */
+/* ── Email list ── */
 #email-list { list-style: none; }
-.email-item { padding: 12px 14px; border-bottom: 1px solid var(--border);
-              cursor: pointer; transition: background .15s; }
+.email-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background .12s;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+}
 .email-item:hover { background: var(--card); }
-.email-item.active { background: var(--unread-bg); border-left: 3px solid var(--accent); }
-.email-item.unread .ei-subject { font-weight: 700; color: var(--unread); }
-.email-item.unread .ei-sender  { color: var(--accent); }
-.ei-sender  { font-size: 13px; font-weight: 600; color: var(--text2);
-              white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ei-subject { font-size: 14px; color: var(--text); margin: 3px 0;
-              white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ei-date    { font-size: 12px; color: var(--text3); }
-.ei-unread-dot { width: 8px; height: 8px; background: var(--accent);
-                 border-radius: 50%; flex-shrink: 0; }
-.ei-row { display: flex; align-items: center; gap: 6px; }
-.empty-state { padding: 40px 20px; text-align: center; color: var(--text3); font-size: 14px; }
+.email-item.active {
+  background: var(--card);
+  border-left: 2px solid var(--accent);
+  padding-left: 14px;
+}
+.email-item.unread .ei-name    { color: var(--text); font-weight: 700; }
+.email-item.unread .ei-subject { color: var(--text2); }
 
-/* ── email content ── */
-#email-content { padding: 16px; }
-.ec-header  { margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
-.ec-subject { font-size: 17px; font-weight: 700; margin-bottom: 10px; }
-.ec-meta    { font-size: 13px; color: var(--text2); display: grid;
-              grid-template-columns: 60px 1fr; gap: 4px 8px; }
-.ec-meta span { color: var(--text3); }
-.ec-body    { font-size: 14px; line-height: 1.7; white-space: pre-wrap;
-              color: var(--text); word-break: break-word; }
-.ec-actions { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+.ei-avatar {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; color: #fff;
+  flex-shrink: 0;
+  letter-spacing: -.3px;
+}
+.ei-info { flex: 1; min-width: 0; }
+.ei-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 3px;
+  gap: 8px;
+}
+.ei-name    { font-size: 13px; font-weight: 500; color: var(--text2);
+              overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.ei-date    { font-size: 11px; color: var(--text3); flex-shrink: 0; }
+.ei-subject { font-size: 12.5px; color: var(--text3);
+              overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ei-dot {
+  width: 7px; height: 7px;
+  background: var(--accent);
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 7px var(--accent);
+}
 
-/* ── attachments ── */
-.attachments { margin-top: 16px; }
-.att-title { font-size: 12px; font-weight: 600; color: var(--text3);
-             text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; }
-.att-list  { display: flex; flex-direction: column; gap: 6px; }
-.att-item  { display: flex; align-items: center; gap: 8px; padding: 8px 12px;
-             background: var(--card); border: 1px solid var(--border);
-             border-radius: 8px; font-size: 13px; }
-.att-item input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; }
-.att-name  { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.att-size  { color: var(--text3); font-size: 12px; flex-shrink: 0; }
-.att-preview-btn { background: var(--bg3); border: none; color: var(--accent);
-                   border-radius: 6px; padding: 4px 10px; cursor: pointer;
-                   font-size: 12px; transition: background .2s; }
+.empty-state {
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--text3);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.empty-state-icon { font-size: 32px; margin-bottom: 12px; opacity: .5; }
+
+/* ── Email content ── */
+#email-content { padding: 20px; }
+.ec-header  { margin-bottom: 18px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+.ec-subject { font-size: 18px; font-weight: 700; margin-bottom: 12px; line-height: 1.35;
+              color: var(--text); letter-spacing: -.3px; }
+.ec-meta    { display: flex; flex-direction: column; gap: 5px; }
+.ec-meta-row { display: flex; gap: 8px; font-size: 12.5px; }
+.ec-meta-label { color: var(--text3); font-weight: 500; width: 40px; flex-shrink: 0; }
+.ec-meta-val   { color: var(--text2); }
+.ec-body    { font-size: 13.5px; line-height: 1.75; white-space: pre-wrap;
+              color: var(--text2); word-break: break-word; }
+.ec-actions { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+
+/* ── Attachments ── */
+.attachments { margin-bottom: 18px; }
+.att-title { font-size: 11px; font-weight: 600; color: var(--text3);
+             text-transform: uppercase; letter-spacing: .7px; margin-bottom: 8px; }
+.att-list  { display: flex; flex-direction: column; gap: 5px; }
+.att-item  {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 13px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  font-size: 12.5px;
+  transition: border .15s;
+}
+.att-item:hover { border-color: var(--border2); }
+.att-item input[type=checkbox] { width: 15px; height: 15px; cursor: pointer; accent-color: var(--accent); }
+.att-name  { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text2); }
+.att-size  { color: var(--text3); font-size: 11.5px; flex-shrink: 0; }
+.att-preview-btn {
+  background: var(--accent-glow);
+  border: 1px solid rgba(99,102,241,.25);
+  color: var(--accent);
+  border-radius: 7px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 11.5px;
+  font-family: var(--font);
+  font-weight: 600;
+  transition: all .15s;
+}
 .att-preview-btn:hover { background: var(--accent); color: #fff; }
 
-/* ── compose panel ── */
-.btn-success { font-size: 16px; padding: 14px 28px; width: 100%;
-               margin-top: 8px; border-radius: 10px; }
-.btn-success:disabled { background: var(--text3); cursor: not-allowed; }
-#compose-panel { padding: 14px; display: flex; flex-direction: column; gap: 12px; }
-.compose-section { background: var(--card); border: 1px solid var(--border);
-                   border-radius: var(--radius); padding: 14px; }
-.compose-label { font-size: 12px; font-weight: 600; color: var(--text3);
-                 text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; }
+/* ── Compose panel ── */
+#compose-panel { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+
+.compose-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+.compose-label {
+  font-size: 11px; font-weight: 600; color: var(--text3);
+  text-transform: uppercase; letter-spacing: .7px;
+  margin-bottom: 10px; display: block;
+}
 .compose-row { display: flex; gap: 8px; }
-.form-select { appearance: none;
-               background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%239ba4c0' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
-               background-repeat: no-repeat; background-position: right 12px center; }
-textarea.form-input { min-height: 180px; }
+
+.form-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath fill='%236366f1' d='M5 7L0 0h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
+
+textarea.form-input { min-height: 200px; }
+
 #compose-attachments { display: flex; flex-direction: column; gap: 6px; }
-.compose-att { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 6px 0; }
-.compose-att input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; }
-.file-upload-btn { display: inline-block; padding: 8px 14px; background: var(--bg2);
-                   border: 1px dashed var(--border2); border-radius: 8px;
-                   cursor: pointer; font-size: 13px; color: var(--text2);
-                   text-align: center; width: 100%; transition: border .2s; }
+.compose-att {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12.5px; padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+}
+.compose-att:last-child { border-bottom: none; }
+.compose-att input[type=checkbox] { width: 15px; height: 15px; cursor: pointer; accent-color: var(--accent); }
+
+.file-upload-btn {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 9px 14px;
+  background: transparent;
+  border: 1px dashed var(--border2);
+  border-radius: 9px;
+  cursor: pointer;
+  font-size: 12.5px;
+  font-family: var(--font);
+  font-weight: 500;
+  color: var(--text3);
+  width: 100%;
+  transition: all .18s;
+}
 .file-upload-btn:hover { border-color: var(--accent); color: var(--accent); }
 #local-file-input { display: none; }
-.local-file-list { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
-.local-file-item { display: flex; align-items: center; gap: 8px; font-size: 13px;
-                   padding: 6px 10px; background: var(--bg3); border-radius: 6px; }
-.local-file-item button { background: none; border: none; color: var(--red);
-                          cursor: pointer; font-size: 15px; padding: 0; margin-left: auto; }
 
-/* ── send status ── */
-#send-status { padding: 12px; border-radius: 8px; font-size: 14px;
-               display: none; text-align: center; font-weight: 600; }
-.status-ok  { background: rgba(67,160,71,.2);  color: #66bb6a; display: block !important; }
-.status-err { background: rgba(229,57,53,.2);  color: #ef5350; display: block !important; }
+.local-file-list { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+.local-file-item {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12.5px; padding: 7px 11px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text2);
+}
+.local-file-item button {
+  background: none; border: none; color: var(--text3);
+  cursor: pointer; font-size: 14px; padding: 0; margin-left: auto;
+  transition: color .15s;
+}
+.local-file-item button:hover { color: var(--red); }
 
-/* ── spinner ── */
-.spinner { display: none; align-items: center; justify-content: center;
-           gap: 10px; padding: 20px; color: var(--text2); font-size: 14px; }
+/* ── Gen + Send buttons ── */
+.btn-gen {
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 20px;
+  font-size: 13.5px;
+  font-weight: 700;
+  font-family: var(--font);
+  cursor: pointer;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 3px 18px rgba(99,102,241,.4);
+  transition: all .18s;
+  letter-spacing: -.1px;
+}
+.btn-gen:hover {
+  box-shadow: 0 6px 26px rgba(99,102,241,.55);
+  transform: translateY(-1px);
+  filter: brightness(1.07);
+}
+.btn-gen:active { transform: scale(.98); }
+
+.btn-success {
+  font-size: 14px; padding: 13px 20px; width: 100%;
+  border-radius: 10px;
+}
+
+/* ── Send status ── */
+#send-status {
+  padding: 11px 14px; border-radius: 9px; font-size: 13px;
+  display: none; text-align: center; font-weight: 600;
+}
+.status-ok  { background: rgba(16,185,129,.12); color: var(--green); border: 1px solid rgba(16,185,129,.25); display: block !important; }
+.status-err { background: rgba(244,63,94,.10);  color: var(--red);   border: 1px solid rgba(244,63,94,.22); display: block !important; }
+
+/* ── Spinner ── */
+.spinner {
+  display: none; align-items: center; justify-content: center;
+  gap: 10px; padding: 20px; color: var(--text3); font-size: 13px;
+}
 .spinner.active { display: flex; }
-.spin { width: 22px; height: 22px; border: 3px solid var(--border2);
-        border-top-color: var(--accent); border-radius: 50%;
-        animation: spin .8s linear infinite; }
+.spin {
+  width: 18px; height: 18px;
+  border: 2px solid var(--border2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+  flex-shrink: 0;
+}
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ── badge / PDF modal / setup banner ── */
-.badge { background: var(--accent); color: #fff; border-radius: 12px;
-         padding: 2px 8px; font-size: 12px; font-weight: 700; }
-#pdf-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.75);
-             z-index: 1000; align-items: center; justify-content: center; }
+/* ── Badge ── */
+.badge {
+  background: var(--accent);
+  color: #fff;
+  border-radius: 10px;
+  padding: 1px 7px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .2px;
+}
+
+/* ── PDF modal ── */
+#pdf-modal {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.8);
+  backdrop-filter: blur(4px);
+  z-index: 1000; align-items: center; justify-content: center;
+}
 #pdf-modal.open { display: flex; }
-.pdf-modal-box { background: var(--card); border-radius: var(--radius);
-                 width: 90vw; height: 90vh; display: flex; flex-direction: column;
-                 box-shadow: var(--shadow); }
-.pdf-modal-header { display: flex; align-items: center; padding: 12px 16px;
-                    border-bottom: 1px solid var(--border); gap: 12px; }
-.pdf-modal-title  { flex: 1; font-weight: 600; font-size: 15px;
-                    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pdf-modal-close  { background: var(--red); border: none; color: #fff;
-                    border-radius: 8px; padding: 6px 14px; cursor: pointer;
-                    font-size: 14px; font-weight: 600; }
-#pdf-iframe { flex: 1; border: none; border-radius: 0 0 var(--radius) var(--radius); }
-.setup-banner { background: rgba(251,140,0,.15); border: 1px solid var(--yellow);
-                color: var(--yellow); border-radius: 8px; padding: 12px 16px;
-                margin: 12px; font-size: 14px; display: flex; align-items: center; gap: 10px; }
-.setup-banner a { color: var(--yellow); }
+.pdf-modal-box {
+  background: var(--card);
+  border: 1px solid var(--border2);
+  border-radius: 16px;
+  width: 90vw; height: 90vh;
+  display: flex; flex-direction: column;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.pdf-modal-header {
+  display: flex; align-items: center;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  gap: 12px;
+}
+.pdf-modal-title {
+  flex: 1; font-weight: 600; font-size: 14px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pdf-modal-close {
+  background: rgba(244,63,94,.12);
+  border: 1px solid rgba(244,63,94,.25);
+  color: var(--red);
+  border-radius: 8px;
+  padding: 6px 14px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font);
+  transition: all .15s;
+}
+.pdf-modal-close:hover { background: var(--red); color: #fff; }
+#pdf-iframe { flex: 1; border: none; }
+
+/* ── Setup banner ── */
+.setup-banner {
+  background: rgba(245,158,11,.1);
+  border: 1px solid rgba(245,158,11,.25);
+  color: var(--yellow);
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin: 14px;
+  font-size: 13px;
+  display: flex; align-items: center; gap: 10px;
+}
+.setup-banner a { color: var(--yellow); font-weight: 600; }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>📧 E-Mail-Assistent – SunProPower</h1>
+  <h1>
+    <span class="logo-badge">SP</span>
+    E-Mail-Assistent
+  </h1>
   <div class="header-btns">
-    <button class="btn-icon refresh-btn" onclick="loadEmails()" title="E-Mails neu laden">
+    <button class="btn-icon" onclick="loadEmails()" title="Aktualisieren">
       ↻ Aktualisieren
     </button>
     <button class="btn-icon" onclick="toggleTheme()" title="Theme wechseln">☀</button>
-    <a href="/settings"><button class="btn-icon" title="Einstellungen">⚙</button></a>
+    <a href="/settings" class="btn-icon" title="Einstellungen">⚙ Einstellungen</a>
   </div>
 </header>
 
@@ -170,7 +389,7 @@ textarea.form-input { min-height: 180px; }
       </div>
       {% endif %}
       <div id="list-spinner" class="spinner active">
-        <div class="spin"></div> E-Mails werden geladen…
+        <div class="spin"></div> Wird geladen…
       </div>
       <ul id="email-list"></ul>
     </div>
@@ -178,11 +397,12 @@ textarea.form-input { min-height: 180px; }
 
   <!-- ═══ MIDDLE: Email content ═══ -->
   <div class="col">
-    <div class="col-header">E-Mail-Inhalt</div>
+    <div class="col-header">Nachricht</div>
     <div class="col-body">
       <div id="email-content">
         <div class="empty-state">
-          ← Klicke auf eine E-Mail um sie zu lesen
+          <div class="empty-state-icon">✉</div>
+          Wähle eine E-Mail aus, um sie zu lesen.
         </div>
       </div>
     </div>
@@ -190,45 +410,43 @@ textarea.form-input { min-height: 180px; }
 
   <!-- ═══ RIGHT: Compose ═══ -->
   <div class="col">
-    <div class="col-header">Kunden-E-Mail erstellen</div>
+    <div class="col-header">Antwort erstellen</div>
     <div class="col-body">
       <div id="compose-panel">
 
-        <div class="compose-section">
-          <div class="compose-label">Empfänger</div>
-          <div style="margin-bottom:8px">
+        <div class="compose-card">
+          <span class="compose-label">Empfänger</span>
+          <div style="margin-bottom:10px">
             <select id="contact-select" class="form-input form-select" onchange="onContactSelect()">
               <option value="">— Neuen Empfänger eingeben —</option>
             </select>
           </div>
-          <div id="new-recipient-fields">
-            <div class="compose-row" style="margin-bottom:6px">
-              <input type="text" id="to-name" class="form-input" placeholder="Name (z. B. Max Mustermann)">
-            </div>
+          <div id="new-recipient-fields" style="display:flex;flex-direction:column;gap:8px">
+            <input type="text"  id="to-name"  class="form-input" placeholder="Name (z. B. Max Mustermann)">
             <input type="email" id="to-email" class="form-input" placeholder="E-Mail-Adresse *">
           </div>
         </div>
 
-        <button class="btn btn-primary btn-sm" onclick="generateEmail()" id="gen-btn">
+        <button class="btn-gen" onclick="generateEmail()" id="gen-btn">
           ✨ KI-E-Mail generieren
         </button>
         <div id="gen-spinner" class="spinner">
           <div class="spin"></div> KI generiert E-Mail…
         </div>
 
-        <div class="compose-section" id="email-editor" style="display:none">
-          <div class="compose-label">Betreff</div>
-          <input type="text" id="compose-subject" class="form-input" style="margin-bottom:10px">
-          <div class="compose-label">E-Mail-Text</div>
+        <div class="compose-card" id="email-editor" style="display:none">
+          <span class="compose-label">Betreff</span>
+          <input type="text" id="compose-subject" class="form-input" style="margin-bottom:14px">
+          <span class="compose-label">E-Mail-Text</span>
           <textarea id="compose-body" class="form-input"></textarea>
         </div>
 
-        <div class="compose-section" id="attach-section" style="display:none">
-          <div class="compose-label">Anhänge</div>
+        <div class="compose-card" id="attach-section" style="display:none">
+          <span class="compose-label">Anhänge</span>
           <div id="compose-attachments"></div>
-          <div style="margin-top:10px">
+          <div style="margin-top:12px">
             <label for="local-file-input" class="file-upload-btn">
-              + Lokale PDF-Datei anhängen
+              + Lokale Datei anhängen
             </label>
             <input type="file" id="local-file-input" accept=".pdf,.png,.jpg,.docx"
                    multiple onchange="onLocalFileSelect()">
@@ -240,7 +458,7 @@ textarea.form-input { min-height: 180px; }
 
         <button class="btn btn-success" id="send-btn" onclick="sendEmail()"
                 style="display:none" disabled>
-          ✉ Senden
+          ✉ Absenden
         </button>
 
       </div>
@@ -253,7 +471,7 @@ textarea.form-input { min-height: 180px; }
 <div id="pdf-modal">
   <div class="pdf-modal-box">
     <div class="pdf-modal-header">
-      <span class="pdf-modal-title" id="pdf-modal-title">PDF Vorschau</span>
+      <span class="pdf-modal-title" id="pdf-modal-title">Vorschau</span>
       <button class="pdf-modal-close" onclick="closePdfModal()">✕ Schließen</button>
     </div>
     <iframe id="pdf-iframe" src=""></iframe>
@@ -301,6 +519,22 @@ function fmtSize(bytes) {
   return (bytes/1024/1024).toFixed(1) + ' MB';
 }
 
+// ── avatar helpers ────────────────────────────────────────────────────────────
+const AVATAR_COLORS = [
+  '#6366f1','#8b5cf6','#ec4899','#f43f5e',
+  '#f59e0b','#10b981','#06b6d4','#3b82f6',
+];
+function avatarColor(name) {
+  let h = 0;
+  for (const c of (name || '?')) h = (h * 31 + c.charCodeAt(0)) & 0xffff;
+  return AVATAR_COLORS[h % AVATAR_COLORS.length];
+}
+function initials(name) {
+  const parts = (name || '?').trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return (parts[0][0] || '?').toUpperCase();
+}
+
 // ── load email list ───────────────────────────────────────────────────────────
 async function loadEmails() {
   document.getElementById('list-spinner').classList.add('active');
@@ -323,35 +557,40 @@ async function loadEmails() {
 }
 
 function renderEmailList(emails) {
-  const list = document.getElementById('email-list');
+  const list  = document.getElementById('email-list');
   const badge = document.getElementById('unread-badge');
   const unreadCount = emails.filter(e => e.unread).length;
 
-  if (unreadCount > 0) {
-    badge.textContent = unreadCount;
-    badge.style.display = 'inline';
-  } else {
-    badge.style.display = 'none';
-  }
+  badge.textContent  = unreadCount;
+  badge.style.display = unreadCount > 0 ? 'inline' : 'none';
 
   if (!emails.length) {
-    list.innerHTML = '<li><div class="empty-state">Keine E-Mails vorhanden.</div></li>';
+    list.innerHTML = `<li><div class="empty-state">
+      <div class="empty-state-icon">📭</div>Keine ungelesenen E-Mails.</div></li>`;
     return;
   }
 
   emails.sort((a, b) => (b.unread - a.unread));
 
-  list.innerHTML = emails.map(e => `
-    <li class="email-item${e.unread ? ' unread' : ''}"
-        onclick="loadEmail(${e.uid})" id="ei-${e.uid}">
-      <div class="ei-row">
-        ${e.unread ? '<div class="ei-unread-dot"></div>' : '<div style="width:8px"></div>'}
-        <div class="ei-sender">${esc(e.sender_name || e.sender_email)}</div>
-      </div>
-      <div class="ei-subject">${esc(e.subject)}</div>
-      <div class="ei-date">${esc(e.date)}</div>
-    </li>
-  `).join('');
+  list.innerHTML = emails.map(e => {
+    const name  = e.sender_name || e.sender_email || '?';
+    const color = avatarColor(name);
+    const ini   = initials(name);
+    return `
+      <li class="email-item${e.unread ? ' unread' : ''}"
+          onclick="loadEmail(${e.uid})" id="ei-${e.uid}">
+        <div class="ei-avatar" style="background:${color}">${ini}</div>
+        <div class="ei-info">
+          <div class="ei-top">
+            <span class="ei-name">${esc(name)}</span>
+            <span class="ei-date">${esc(e.date)}</span>
+          </div>
+          <div class="ei-subject">${esc(e.subject)}</div>
+        </div>
+        ${e.unread ? '<div class="ei-dot"></div>' : ''}
+      </li>
+    `;
+  }).join('');
 }
 
 // ── load email content ────────────────────────────────────────────────────────
@@ -361,7 +600,7 @@ async function loadEmail(uid) {
   if (li) { li.classList.add('active'); li.classList.remove('unread'); }
 
   document.getElementById('email-content').innerHTML =
-    '<div class="spinner active" style="padding:40px 20px"><div class="spin"></div> Wird geladen…</div>';
+    '<div class="spinner active" style="padding:60px 20px"><div class="spin"></div> Wird geladen…</div>';
 
   resetCompose();
 
@@ -397,9 +636,9 @@ function renderEmailContent(data) {
       <div class="ec-header">
         <div class="ec-subject">${esc(data.subject)}</div>
         <div class="ec-meta">
-          <span>Von:</span><div>${esc(data.from)}</div>
-          <span>An:</span><div>${esc(data.to)}</div>
-          <span>Datum:</span><div>${esc(data.date)}</div>
+          <div class="ec-meta-row"><span class="ec-meta-label">Von</span><span class="ec-meta-val">${esc(data.from)}</span></div>
+          <div class="ec-meta-row"><span class="ec-meta-label">An</span><span class="ec-meta-val">${esc(data.to)}</span></div>
+          <div class="ec-meta-row"><span class="ec-meta-label">Datum</span><span class="ec-meta-val">${esc(data.date)}</span></div>
         </div>
       </div>
       ${attHtml}
@@ -417,23 +656,23 @@ function renderAttachmentList(atts) {
   if (!atts.length) return '';
   const items = atts.map(a => `
     <div class="att-item">
-      <span style="font-size:18px">${a.is_pdf ? '📄' : '📎'}</span>
+      <span>${a.is_pdf ? '📄' : '📎'}</span>
       <span class="att-name" title="${esc(a.filename)}">${esc(a.filename)}</span>
       <span class="att-size">${fmtSize(a.size)}</span>
       ${a.is_pdf
-        ? `<button class="att-preview-btn" onclick="previewPDF('${a.id}','${esc(a.filename)}')">
-             Vorschau
-           </button>`
+        ? `<button class="att-preview-btn" onclick="previewPDF('${a.id}','${esc(a.filename)}')">Vorschau</button>`
         : ''}
     </div>
   `).join('');
-  return `<div class="attachments"><div class="att-title">Anhänge (${atts.length})</div>
-          <div class="att-list">${items}</div></div>`;
+  return `<div class="attachments">
+    <div class="att-title">Anhänge (${atts.length})</div>
+    <div class="att-list">${items}</div>
+  </div>`;
 }
 
 // ── compose ───────────────────────────────────────────────────────────────────
 function startCompose() {
-  document.getElementById('gen-btn').style.display = 'inline-block';
+  document.getElementById('gen-btn').style.display = 'flex';
   document.getElementById('email-editor').style.display = 'block';
   document.getElementById('send-btn').style.display = 'block';
   document.getElementById('send-btn').disabled = false;
@@ -445,37 +684,35 @@ function startCompose() {
 
 function resetCompose() {
   currentEmail = null;
-  localFiles = [];
-  document.getElementById('email-editor').style.display = 'none';
-  document.getElementById('send-btn').style.display = 'none';
-  document.getElementById('send-btn').disabled = true;
+  localFiles   = [];
+  document.getElementById('email-editor').style.display  = 'none';
+  document.getElementById('send-btn').style.display      = 'none';
+  document.getElementById('send-btn').disabled           = true;
   document.getElementById('attach-section').style.display = 'none';
   document.getElementById('compose-attachments').innerHTML = '';
-  document.getElementById('local-file-list').innerHTML = '';
-  document.getElementById('local-file-input').value = '';
-  document.getElementById('send-status').className = '';
-  document.getElementById('send-status').textContent = '';
-  document.getElementById('send-status').style.display = 'none';
+  document.getElementById('local-file-list').innerHTML   = '';
+  document.getElementById('local-file-input').value      = '';
+  document.getElementById('send-status').className       = '';
+  document.getElementById('send-status').textContent     = '';
+  document.getElementById('send-status').style.display   = 'none';
   document.getElementById('gen-spinner').classList.remove('active');
 }
 
 function renderComposeAttachments(atts) {
   const container = document.getElementById('compose-attachments');
   if (!atts.length) {
-    container.innerHTML = '<div style="color:var(--text3);font-size:13px">Keine Anhänge in dieser E-Mail.</div>';
+    container.innerHTML = '<div style="color:var(--text3);font-size:12.5px">Keine Anhänge in dieser E-Mail.</div>';
     return;
   }
   container.innerHTML = atts.map(a => `
     <div class="compose-att">
       <input type="checkbox" id="ca-${a.id}" value="${a.id}" checked>
-      <label for="ca-${a.id}" style="flex:1;cursor:pointer">
+      <label for="ca-${a.id}" style="flex:1;cursor:pointer;color:var(--text2)">
         ${a.is_pdf ? '📄' : '📎'} ${esc(a.filename)}
-        <span style="color:var(--text3);font-size:12px">(${fmtSize(a.size)})</span>
+        <span style="color:var(--text3);font-size:11.5px">(${fmtSize(a.size)})</span>
       </label>
       ${a.is_pdf
-        ? `<button class="att-preview-btn" onclick="previewPDF('${a.id}','${esc(a.filename)}')">
-             Vorschau
-           </button>`
+        ? `<button class="att-preview-btn" onclick="previewPDF('${a.id}','${esc(a.filename)}')">Vorschau</button>`
         : ''}
     </div>
   `).join('');
@@ -501,14 +738,17 @@ async function loadContacts() {
 function onContactSelect() {
   const sel = document.getElementById('contact-select');
   const opt = sel.selectedOptions[0];
+  const fields = document.getElementById('new-recipient-fields');
   if (sel.value) {
     document.getElementById('to-email').value = sel.value;
-    document.getElementById('to-name').value = opt.dataset.name || '';
-    document.getElementById('new-recipient-fields').style.opacity = '.6';
+    document.getElementById('to-name').value  = opt.dataset.name || '';
+    fields.style.opacity = '.5';
+    fields.style.pointerEvents = 'none';
   } else {
     document.getElementById('to-email').value = '';
-    document.getElementById('to-name').value = '';
-    document.getElementById('new-recipient-fields').style.opacity = '1';
+    document.getElementById('to-name').value  = '';
+    fields.style.opacity = '1';
+    fields.style.pointerEvents = '';
   }
 }
 
@@ -535,19 +775,19 @@ async function generateEmail() {
     });
     const data = await r.json();
     document.getElementById('gen-spinner').classList.remove('active');
-    document.getElementById('gen-btn').style.display = 'inline-block';
+    document.getElementById('gen-btn').style.display = 'flex';
 
     if (data.error) { showToast(data.error, 'err'); return; }
 
     document.getElementById('compose-subject').value = data.subject || '';
-    document.getElementById('compose-body').value = data.body || '';
+    document.getElementById('compose-body').value    = data.body || '';
     document.getElementById('email-editor').style.display = 'block';
-    document.getElementById('send-btn').style.display = 'block';
-    document.getElementById('send-btn').disabled = false;
+    document.getElementById('send-btn').style.display     = 'block';
+    document.getElementById('send-btn').disabled          = false;
     showToast('E-Mail erfolgreich generiert!', 'ok');
   } catch(e) {
     document.getElementById('gen-spinner').classList.remove('active');
-    document.getElementById('gen-btn').style.display = 'inline-block';
+    document.getElementById('gen-btn').style.display = 'flex';
     showToast('KI nicht erreichbar. Bitte erneut versuchen.', 'err');
   }
 }
@@ -556,9 +796,7 @@ async function generateEmail() {
 function onLocalFileSelect() {
   const input = document.getElementById('local-file-input');
   for (const file of input.files) {
-    if (!localFiles.find(f => f.name === file.name)) {
-      localFiles.push(file);
-    }
+    if (!localFiles.find(f => f.name === file.name)) localFiles.push(file);
   }
   renderLocalFiles();
 }
@@ -569,8 +807,7 @@ function removeLocalFile(name) {
 }
 
 function renderLocalFiles() {
-  const container = document.getElementById('local-file-list');
-  container.innerHTML = localFiles.map(f => `
+  document.getElementById('local-file-list').innerHTML = localFiles.map(f => `
     <div class="local-file-item">
       📎 ${esc(f.name)} <span style="color:var(--text3)">(${fmtSize(f.size)})</span>
       <button onclick="removeLocalFile('${esc(f.name)}')" title="Entfernen">✕</button>
@@ -591,48 +828,47 @@ async function sendEmail() {
   }
 
   const btn = document.getElementById('send-btn');
-  btn.disabled = true;
+  btn.disabled    = true;
   btn.textContent = 'Wird gesendet…';
 
   const fd = new FormData();
-  fd.append('to_name', toName);
+  fd.append('to_name',  toName);
   fd.append('to_email', toEmail);
-  fd.append('subject', subject);
-  fd.append('body', body);
+  fd.append('subject',  subject);
+  fd.append('body',     body);
   if (currentEmail) fd.append('source_uid', currentEmail.uid);
 
   document.querySelectorAll('#compose-attachments input[type=checkbox]:checked').forEach(cb => {
     fd.append('attachment_ids', cb.value);
   });
-
   for (let i = 0; i < localFiles.length; i++) {
     fd.append(`file_${i}`, localFiles[i], localFiles[i].name);
   }
 
   const status = document.getElementById('send-status');
   try {
-    const r = await fetch('/api/send', { method: 'POST', body: fd });
+    const r    = await fetch('/api/send', { method: 'POST', body: fd });
     const data = await r.json();
-    btn.disabled = false;
-    btn.textContent = '✉ Senden';
+    btn.disabled    = false;
+    btn.textContent = '✉ Absenden';
 
     if (data.error) {
       status.textContent = '✕ ' + data.error;
-      status.className = 'status-err';
+      status.className   = 'status-err';
       status.style.display = 'block';
     } else {
       status.textContent = '✓ E-Mail erfolgreich gesendet!';
-      status.className = 'status-ok';
+      status.className   = 'status-ok';
       status.style.display = 'block';
       showToast('E-Mail gesendet!', 'ok');
       loadContacts();
       setTimeout(loadEmails, 1500);
     }
   } catch(e) {
-    btn.disabled = false;
-    btn.textContent = '✉ Senden';
-    status.textContent = '✕ E-Mail konnte nicht gesendet werden. Bitte erneut versuchen.';
-    status.className = 'status-err';
+    btn.disabled    = false;
+    btn.textContent = '✉ Absenden';
+    status.textContent = '✕ E-Mail konnte nicht gesendet werden.';
+    status.className   = 'status-err';
     status.style.display = 'block';
   }
 }
@@ -643,12 +879,10 @@ function previewPDF(attId, filename) {
   document.getElementById('pdf-iframe').src = `/api/attachment/${attId}`;
   document.getElementById('pdf-modal').classList.add('open');
 }
-
 function closePdfModal() {
   document.getElementById('pdf-modal').classList.remove('open');
   document.getElementById('pdf-iframe').src = '';
 }
-
 document.getElementById('pdf-modal').addEventListener('click', function(e) {
   if (e.target === this) closePdfModal();
 });
