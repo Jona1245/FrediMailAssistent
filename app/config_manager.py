@@ -6,7 +6,7 @@ _BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG_FILE = os.path.join(_BASE, 'config.json')
 KEY_FILE = os.path.join(_BASE, 'config.key')
 
-ENCRYPTED_FIELDS = {'imap1_password', 'imap2_password', 'claude_api_key'}
+ENCRYPTED_FIELDS = {'imap1_password', 'imap2_password', 'claude_api_key', 'gemini_api_key'}
 
 DEFAULT_CONFIG = {
     'imap1_host': 'outlook.office365.com',
@@ -22,6 +22,9 @@ DEFAULT_CONFIG = {
     'imap2_password': '',
     'claude_api_key': '',
     'claude_model': 'claude-haiku-4-5-20251001',
+    'gemini_api_key': '',
+    'gemini_model': 'gemini-2.0-flash',
+    'ai_provider': 'auto',
     'system_prompt': (
         'Du bist der E-Mail-Assistent von Fredi Hartlaub, Geschäftsführer von SunProPower. '
         'Schreibe E-Mails in seinem Stil: professionell aber persönlich, klar strukturiert, auf Deutsch. '

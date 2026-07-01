@@ -1,5 +1,6 @@
 import os
 import anthropic
+import google.generativeai as genai
 
 _BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 STYLE_DIR = os.path.join(_BASE, 'style_examples')
@@ -22,12 +23,7 @@ def _load_style_examples():
     return '\n\n'.join(parts)
 
 
-def generate_email(source_text, customer_name, customer_email, config):
-    api_key = config.get('claude_api_key', '').strip()
-    if not api_key:
-        return None, 'no_api_key'
-
-    model = config.get('claude_model', 'claude-haiku-4-5-20251001')
+def _build_prompts(source_text, customer_name, customer_email, config):
     system_prompt = config.get('system_prompt', '')
     filter_rules = config.get('filter_rules', '')
     style_examples = _load_style_examples()
@@ -55,6 +51,36 @@ def generate_email(source_text, customer_name, customer_email, config):
         f'<E-Mail-Text hier>\n\n'
         f'Kein erklärender Text, nur die fertige E-Mail.'
     )
+    return system, user_msg
+
+
+def _parse_response(text):
+    subject = ''
+    body_lines = []
+    in_body = False
+    for line in text.splitlines():
+        if not in_body and line.lower().startswith('betreff:'):
+            subject = line[len('betreff:'):].strip()
+        elif subject and not in_body and line.strip() == '':
+            in_body = True
+        elif in_body:
+            body_lines.append(line)
+
+    body = '\n'.join(body_lines).strip()
+    if not subject:
+        subject = 'Ihre Anfrage – SunProPower'
+    if not body:
+        body = text
+    return {'subject': subject, 'body': body}
+
+
+def _generate_anthropic(source_text, customer_name, customer_email, config):
+    api_key = config.get('claude_api_key', '').strip()
+    if not api_key:
+        return None, 'no_api_key'
+
+    model = config.get('claude_model', 'claude-haiku-4-5-20251001')
+    system, user_msg = _build_prompts(source_text, customer_name, customer_email, config)
 
     try:
         client = anthropic.Anthropic(api_key=api_key)
@@ -66,33 +92,53 @@ def generate_email(source_text, customer_name, customer_email, config):
         )
         if not resp.content:
             return None, 'api_error'
-        text = resp.content[0].text.strip()
-
-        subject = ''
-        body_lines = []
-        in_body = False
-        for line in text.splitlines():
-            if not in_body and line.lower().startswith('betreff:'):
-                subject = line[len('betreff:'):].strip()
-            elif subject and not in_body and line.strip() == '':
-                in_body = True
-            elif in_body:
-                body_lines.append(line)
-
-        body = '\n'.join(body_lines).strip()
-        if not subject:
-            subject = 'Ihre Anfrage – SunProPower'
-        if not body:
-            body = text
-
-        return {'subject': subject, 'body': body}, None
-
+        return _parse_response(resp.content[0].text.strip()), None
     except anthropic.AuthenticationError:
         return None, 'auth_failed'
     except anthropic.APIConnectionError:
         return None, 'connection_failed_ai'
     except Exception:
         return None, 'api_error'
+
+
+def _generate_gemini(source_text, customer_name, customer_email, config):
+    api_key = config.get('gemini_api_key', '').strip()
+    if not api_key:
+        return None, 'no_gemini_key'
+
+    model_name = config.get('gemini_model', 'gemini-2.0-flash')
+    system, user_msg = _build_prompts(source_text, customer_name, customer_email, config)
+
+    try:
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel(
+            model_name=model_name,
+            system_instruction=system or None,
+        )
+        resp = model.generate_content(user_msg)
+        return _parse_response(resp.text.strip()), None
+    except Exception as e:
+        msg = str(e).lower()
+        if any(x in msg for x in ('api key', 'invalid', 'permission', 'unauthenticated', '401', '403')):
+            return None, 'gemini_auth_failed'
+        return None, 'api_error'
+
+
+def generate_email(source_text, customer_name, customer_email, config):
+    provider = config.get('ai_provider', 'auto')
+    claude_key = config.get('claude_api_key', '').strip()
+    gemini_key = config.get('gemini_api_key', '').strip()
+
+    if provider == 'gemini':
+        return _generate_gemini(source_text, customer_name, customer_email, config)
+    if provider == 'anthropic':
+        return _generate_anthropic(source_text, customer_name, customer_email, config)
+    # auto: Gemini bevorzugen (kostenlos), Anthropic als Fallback
+    if gemini_key:
+        return _generate_gemini(source_text, customer_name, customer_email, config)
+    if claude_key:
+        return _generate_anthropic(source_text, customer_name, customer_email, config)
+    return None, 'no_api_key'
 
 
 def list_style_examples():

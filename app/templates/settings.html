@@ -201,35 +201,97 @@ label { font-size: 13px; font-weight: 600; color: var(--text2); }
     </div>
   </div>
 
-  <!-- ── Claude API ── -->
+  <!-- ── KI Anbieter ── -->
   <div class="section">
-    <div class="section-header">🤖 Claude API (Künstliche Intelligenz)</div>
+    <div class="section-header">🤖 Künstliche Intelligenz</div>
     <div class="section-body">
+
       <div class="field">
-        <label>API-Key</label>
-        <input type="password" id="claude_api_key" class="form-input"
-               value="{{ config.claude_api_key }}" placeholder="sk-ant-..."
-               autocomplete="new-password">
-        <div class="hint">
-          Erhältlich unter
-          <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>
-        </div>
-      </div>
-      <div class="field">
-        <label>Modell</label>
+        <label>KI-Anbieter</label>
         <div class="select-wrapper">
-          <select id="claude_model" class="form-input">
-            <option value="claude-haiku-4-5-20251001"
-              {% if config.claude_model == 'claude-haiku-4-5-20251001' %}selected{% endif %}>
-              Haiku 4.5 — schnell &amp; günstig (empfohlen)
+          <select id="ai_provider" class="form-input" onchange="updateAiProviderUI()">
+            <option value="auto"
+              {% if not config.ai_provider or config.ai_provider == 'auto' %}selected{% endif %}>
+              Automatisch (Gemini falls verfügbar, sonst Claude)
             </option>
-            <option value="claude-sonnet-4-6"
-              {% if config.claude_model == 'claude-sonnet-4-6' %}selected{% endif %}>
-              Sonnet 4.6 — besser, etwas teurer
+            <option value="gemini"
+              {% if config.ai_provider == 'gemini' %}selected{% endif %}>
+              Google Gemini (kostenlos)
+            </option>
+            <option value="anthropic"
+              {% if config.ai_provider == 'anthropic' %}selected{% endif %}>
+              Anthropic Claude (kostenpflichtig)
             </option>
           </select>
         </div>
       </div>
+
+      <!-- Gemini -->
+      <div id="gemini-section">
+        <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:10px;
+                    padding-top:10px;border-top:1px solid var(--border)">
+          Google Gemini
+        </div>
+        <div class="field">
+          <label>Gemini API-Key</label>
+          <input type="password" id="gemini_api_key" class="form-input"
+                 value="{{ config.gemini_api_key }}" placeholder="AIzaSy..."
+                 autocomplete="new-password">
+          <div class="hint">
+            Kostenlos erhältlich unter
+            <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a>
+          </div>
+        </div>
+        <div class="field">
+          <label>Gemini-Modell</label>
+          <div class="select-wrapper">
+            <select id="gemini_model" class="form-input">
+              <option value="gemini-2.0-flash"
+                {% if not config.gemini_model or config.gemini_model == 'gemini-2.0-flash' %}selected{% endif %}>
+                Gemini 2.0 Flash — schnell &amp; kostenlos (empfohlen)
+              </option>
+              <option value="gemini-1.5-flash"
+                {% if config.gemini_model == 'gemini-1.5-flash' %}selected{% endif %}>
+                Gemini 1.5 Flash — alternativ, kostenlos
+              </option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Claude -->
+      <div id="anthropic-section">
+        <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:10px;
+                    padding-top:10px;border-top:1px solid var(--border)">
+          Anthropic Claude
+        </div>
+        <div class="field">
+          <label>Claude API-Key</label>
+          <input type="password" id="claude_api_key" class="form-input"
+                 value="{{ config.claude_api_key }}" placeholder="sk-ant-..."
+                 autocomplete="new-password">
+          <div class="hint">
+            Erhältlich unter
+            <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>
+          </div>
+        </div>
+        <div class="field">
+          <label>Claude-Modell</label>
+          <div class="select-wrapper">
+            <select id="claude_model" class="form-input">
+              <option value="claude-haiku-4-5-20251001"
+                {% if config.claude_model == 'claude-haiku-4-5-20251001' %}selected{% endif %}>
+                Haiku 4.5 — schnell &amp; günstig (empfohlen)
+              </option>
+              <option value="claude-sonnet-4-6"
+                {% if config.claude_model == 'claude-sonnet-4-6' %}selected{% endif %}>
+                Sonnet 4.6 — besser, etwas teurer
+              </option>
+            </select>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -297,7 +359,24 @@ label { font-size: 13px; font-weight: 600; color: var(--text2); }
 <script>
 document.addEventListener('DOMContentLoaded', () => {
   loadStyleExamples();
+  updateAiProviderUI();
 });
+
+function updateAiProviderUI() {
+  const provider = document.getElementById('ai_provider').value;
+  const geminiSection  = document.getElementById('gemini-section');
+  const anthropicSection = document.getElementById('anthropic-section');
+  if (provider === 'gemini') {
+    geminiSection.style.display  = '';
+    anthropicSection.style.display = 'none';
+  } else if (provider === 'anthropic') {
+    geminiSection.style.display  = 'none';
+    anthropicSection.style.display = '';
+  } else {
+    geminiSection.style.display  = '';
+    anthropicSection.style.display = '';
+  }
+}
 
 function toggleTheme() {
   const html = document.documentElement;
@@ -317,7 +396,8 @@ async function saveAll() {
   const fields = [
     'imap1_host','imap1_port','imap1_email','imap1_password',
     'imap2_host','imap2_port','smtp2_host','smtp2_port','smtp2_type','imap2_email','imap2_password',
-    'claude_api_key','claude_model','system_prompt','filter_rules',
+    'gemini_api_key','gemini_model','claude_api_key','claude_model','ai_provider',
+    'system_prompt','filter_rules',
   ];
   const data = {};
   for (const f of fields) {

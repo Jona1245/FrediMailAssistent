@@ -30,20 +30,24 @@ _ERRORS = {
     'smtp_auth_failed': 'Anmeldung bei Postfach 2 fehlgeschlagen. Zugangsdaten in den Einstellungen prüfen.',
     'smtp_failed': 'E-Mail konnte nicht gesendet werden. Bitte erneut versuchen.',
     'send_failed': 'E-Mail konnte nicht gesendet werden. Internetverbindung prüfen.',
-    'no_api_key': 'Kein Claude API-Key eingetragen. Bitte in den Einstellungen hinterlegen.',
-    'auth_failed': 'KI-Generierung fehlgeschlagen. Claude API-Key in den Einstellungen prüfen.',
+    'no_api_key': 'Kein API-Key eingetragen. Bitte Gemini- oder Claude-Key in den Einstellungen hinterlegen.',
+    'no_gemini_key': 'Kein Gemini API-Key eingetragen. Bitte in den Einstellungen hinterlegen.',
+    'auth_failed': 'Claude API-Key ungültig. Bitte unter console.anthropic.com prüfen.',
+    'gemini_auth_failed': 'Gemini API-Key ungültig. Bitte unter aistudio.google.com/apikey prüfen.',
     'connection_failed_ai': 'KI nicht erreichbar. Bitte Internetverbindung prüfen.',
     'api_error': 'KI-Generierung fehlgeschlagen. Bitte erneut versuchen.',
 }
 
 MASKED = '••••••••'
-SECRET_FIELDS = ('imap1_password', 'imap2_password', 'claude_api_key')
+SECRET_FIELDS = ('imap1_password', 'imap2_password', 'claude_api_key', 'gemini_api_key')
 
 _ALLOWED_CONFIG_KEYS = {
     'imap1_host', 'imap1_port', 'imap1_email', 'imap1_password',
     'imap2_host', 'imap2_port', 'smtp2_host', 'smtp2_port', 'smtp2_type',
     'imap2_email', 'imap2_password',
-    'claude_api_key', 'claude_model', 'system_prompt', 'filter_rules', 'theme',
+    'claude_api_key', 'claude_model',
+    'gemini_api_key', 'gemini_model', 'ai_provider',
+    'system_prompt', 'filter_rules', 'theme',
 }
 
 
