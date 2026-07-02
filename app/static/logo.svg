@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img">
+  <title>IT Logo</title>
+  <rect width="100" height="100" rx="16" fill="#0F6E56"/>
+  <!-- 3x3 dot grid -->
+  <circle cx="30" cy="30" r="4.5" fill="white"/>
+  <circle cx="50" cy="30" r="4.5" fill="white"/>
+  <circle cx="70" cy="30" r="4.5" fill="white"/>
+  <circle cx="30" cy="50" r="4.5" fill="white"/>
+  <circle cx="50" cy="50" r="7" fill="white"/>
+  <circle cx="70" cy="50" r="4.5" fill="white"/>
+  <circle cx="30" cy="70" r="4.5" fill="white"/>
+  <circle cx="50" cy="70" r="4.5" fill="white"/>
+  <circle cx="70" cy="70" r="4.5" fill="white"/>
+  <!-- center to all connections -->
+  <line x1="50" y1="43" x2="50" y2="34" stroke="white" stroke-width="1.5" stroke-opacity="0.4"/>
+  <line x1="57" y1="50" x2="66" y2="50" stroke="white" stroke-width="1.5" stroke-opacity="0.4"/>
+  <line x1="50" y1="57" x2="50" y2="66" stroke="white" stroke-width="1.5" stroke-opacity="0.4"/>
+  <line x1="43" y1="50" x2="34" y2="50" stroke="white" stroke-width="1.5" stroke-opacity="0.4"/>
+  <line x1="44" y1="44" x2="34" y2="34" stroke="white" stroke-width="1.5" stroke-opacity="0.4"/>
+  <line x1="56" y1="44" x2="66" y2="34" stroke="white" stroke-width="1.5" stroke-opacity="0.4"/>
+  <line x1="56" y1="56" x2="66" y2="66" stroke="white" stroke-width="1.5" stroke-opacity="0.4"/>
+  <line x1="44" y1="56" x2="34" y2="66" stroke="white" stroke-width="1.5" stroke-opacity="0.4"/>
+</svg>

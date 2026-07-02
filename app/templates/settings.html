@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Einstellungen – E-Mail-Assistent</title>
+<link rel="icon" href="{{ url_for('static', filename='logo.svg') }}" type="image/svg+xml">
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <style>
 /* ── page layout ── */
@@ -106,7 +107,7 @@ label { font-size: 12px; font-weight: 600; color: var(--text3); text-transform: 
 <body>
 
 <header>
-  <h1><span class="logo-badge">SP</span> Einstellungen</h1>
+  <h1><img src="{{ url_for('static', filename='logo.svg') }}" alt="Logo" style="height:26px;width:26px;border-radius:6px;flex-shrink:0;"> Einstellungen</h1>
   <a href="/" class="back-btn">← Zurück</a>
   <button class="btn btn-outline btn-sm" onclick="toggleTheme()">☀ Theme</button>
 </header>

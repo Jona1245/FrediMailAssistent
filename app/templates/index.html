@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>E-Mail-Assistent – SunProPower</title>
+<link rel="icon" href="{{ url_for('static', filename='logo.svg') }}" type="image/svg+xml">
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <style>
 html, body { height: 100%; overflow: hidden; }
@@ -361,7 +362,7 @@ textarea.form-input { min-height: 200px; }
 
 <header>
   <h1>
-    <span class="logo-badge">SP</span>
+    <img src="{{ url_for('static', filename='logo.svg') }}" alt="Logo" style="height:28px;width:28px;border-radius:7px;flex-shrink:0;">
     E-Mail-Assistent
   </h1>
   <div class="header-btns">

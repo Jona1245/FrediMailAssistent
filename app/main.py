@@ -80,7 +80,7 @@ def err(code, host=None):
 @app.route('/')
 def index():
     config = load_config()
-    needs_setup = not config.get('imap1_email') or not config.get('claude_api_key')
+    needs_setup = not config.get('imap1_email') or (not config.get('claude_api_key') and not config.get('gemini_api_key'))
     return render_template('index.html', needs_setup=needs_setup,
                            theme=config.get('theme', 'dark'))
 
