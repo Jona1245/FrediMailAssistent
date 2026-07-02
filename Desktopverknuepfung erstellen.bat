@@ -19,19 +19,25 @@ if not exist "%EMBED_DIR%\python.exe" (
     )
 )
 
+:: pythonw.exe bestimmen (kein Terminalfenster beim Start)
+set PYTHONW=
+if exist "%EMBED_DIR%\pythonw.exe" set PYTHONW=%EMBED_DIR%\pythonw.exe
+if "%PYTHONW%"=="" if exist "%~dp0venv\Scripts\pythonw.exe" set PYTHONW=%~dp0venv\Scripts\pythonw.exe
+
 :: Desktop-Symbol erstellen
 set ICON=%~dp0app\static\logo.ico
-set TARGET=%~dp0start.bat
+set LAUNCHER=%~dp0launcher.py
 set LNK=%USERPROFILE%\Desktop\FrediMailAssistent.lnk
 set WORKDIR=%~dp0
 
 powershell -NoProfile -Command ^
   "$ws = New-Object -ComObject WScript.Shell; ^
    $s = $ws.CreateShortcut('%LNK%'); ^
-   $s.TargetPath = '%TARGET%'; ^
+   $s.TargetPath = '%PYTHONW%'; ^
+   $s.Arguments = '\"%LAUNCHER%\"'; ^
    $s.IconLocation = '%ICON%'; ^
    $s.WorkingDirectory = '%WORKDIR%'; ^
-   $s.WindowStyle = 7; ^
+   $s.WindowStyle = 1; ^
    $s.Description = 'FrediMailAssistent starten'; ^
    $s.Save()"
 
