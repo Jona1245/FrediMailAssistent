@@ -136,6 +136,9 @@ def _provider_hint(host):
     if 'gmail' in h:
         return ('Google blockiert die Anmeldung. Bitte ein App-Passwort erstellen '
                 '(2-Faktor-Auth muss aktiv sein): https://myaccount.google.com/apppasswords')
+    if 'mailfence' in h:
+        return ('Anmeldung fehlgeschlagen. Bitte E-Mail-Adresse und Passwort prüfen. '
+                'Bei Mailfence ist kein App-Passwort nötig — das normale Passwort verwenden.')
     if 'mail.com' in h:
         return ('Anmeldung fehlgeschlagen. Bitte Passwort prüfen. Falls IMAP noch nicht aktiviert: '
                 'In mail.com-Einstellungen → POP3 & IMAP → einschalten.')
