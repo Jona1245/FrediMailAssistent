@@ -2,6 +2,9 @@ import os
 import sys
 import io
 import re
+import time as _time
+import threading
+import subprocess
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -20,6 +23,80 @@ from contacts import load_contacts, add_contact, delete_contact
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 25 * 1024 * 1024  # 25 MB upload limit
+
+_BASE_DIR = os.environ.get('FREDI_BASE') or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_GITHUB_REPO = 'Jona1245/FrediMailAssistent'
+_update_cache = {'ts': 0.0, 'info': None}
+
+
+def _read_local_version():
+    try:
+        return open(os.path.join(_BASE_DIR, 'version.txt')).read().strip()
+    except Exception:
+        return '0.0.0'
+
+
+def _fetch_update_info():
+    """Check GitHub Releases API; result cached for 30 min."""
+    now = _time.time()
+    if now - _update_cache['ts'] < 1800:
+        return _update_cache['info']
+    info = None
+    try:
+        import requests
+        r = requests.get(
+            f'https://api.github.com/repos/{_GITHUB_REPO}/releases/latest',
+            timeout=5,
+            headers={'User-Agent': 'FrediMailAssistent/1.0'},
+        )
+        if r.status_code == 200:
+            data = r.json()
+            tag = data.get('tag_name', '')
+            remote_ver = tag.lstrip('v')
+            if remote_ver and remote_ver != _read_local_version():
+                info = {'version': remote_ver, 'tag': tag, 'url': data.get('html_url', '')}
+    except Exception:
+        pass
+    _update_cache['ts'] = now
+    _update_cache['info'] = info
+    return info
+
+
+def _do_download_and_extract(tag):
+    import requests, zipfile, shutil, tempfile
+    zip_url = f'https://github.com/{_GITHUB_REPO}/archive/refs/tags/{tag}.zip'
+    r = requests.get(zip_url, timeout=120, stream=True, headers={'User-Agent': 'FrediMailAssistent/1.0'})
+    r.raise_for_status()
+
+    tmp_zip = os.path.join(tempfile.gettempdir(), 'fredi_update.zip')
+    with open(tmp_zip, 'wb') as f:
+        for chunk in r.iter_content(8192):
+            f.write(chunk)
+
+    _PRESERVE = {'python_embed', 'venv', 'config.json', 'config.key',
+                 'contacts.json', 'style_examples', '__pycache__'}
+    try:
+        with tempfile.TemporaryDirectory() as extract_dir:
+            with zipfile.ZipFile(tmp_zip) as zf:
+                zf.extractall(extract_dir)
+            entries = os.listdir(extract_dir)
+            if not entries:
+                raise RuntimeError('Leeres ZIP-Archiv.')
+            inner = os.path.join(extract_dir, entries[0])
+            for item in os.listdir(inner):
+                if item in _PRESERVE:
+                    continue
+                src = os.path.join(inner, item)
+                dst = os.path.join(_BASE_DIR, item)
+                if os.path.isdir(src):
+                    shutil.copytree(src, dst, dirs_exist_ok=True)
+                else:
+                    shutil.copy2(src, dst)
+    finally:
+        try:
+            os.unlink(tmp_zip)
+        except Exception:
+            pass
 
 _ERRORS = {
     'login_failed': 'Anmeldung fehlgeschlagen. Bitte Zugangsdaten in den Einstellungen prüfen.',
@@ -301,6 +378,37 @@ def api_upload_style():
 @app.route('/api/style-examples/<filename>', methods=['DELETE'])
 def api_delete_style(filename):
     delete_style_example(filename)
+    return jsonify({'success': True})
+
+
+# ── update ────────────────────────────────────────────────────────────────────
+
+@app.route('/api/update-status')
+def api_update_status():
+    info = _fetch_update_info()
+    if info:
+        return jsonify({'version': info['version'], 'url': info['url']})
+    return jsonify({'version': None})
+
+
+@app.route('/api/do-update', methods=['POST'])
+def api_do_update():
+    info = _fetch_update_info()
+    if not info:
+        return jsonify({'error': 'Kein Update verfügbar.'})
+    try:
+        _do_download_and_extract(info['tag'])
+    except Exception as e:
+        return jsonify({'error': str(e)})
+
+    def _restart():
+        _time.sleep(2)
+        python_exe = os.environ.get('FREDI_PYTHON', sys.executable)
+        launcher = os.environ.get('FREDI_LAUNCHER', os.path.join(_BASE_DIR, 'launcher.py'))
+        subprocess.Popen([python_exe, launcher])
+        os._exit(0)
+
+    threading.Thread(target=_restart, daemon=True).start()
     return jsonify({'success': True})
 
 

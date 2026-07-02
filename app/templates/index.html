@@ -344,6 +344,48 @@ textarea.form-input { min-height: 200px; }
 .pdf-modal-close:hover { background: var(--red); color: #fff; }
 #pdf-iframe { flex: 1; border: none; }
 
+/* ── Update banner ── */
+#update-banner {
+  background: rgba(16,185,129,.08);
+  border-bottom: 1px solid rgba(16,185,129,.2);
+  color: var(--green);
+  padding: 9px 20px;
+  font-size: 13px;
+  display: none;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+#update-banner.visible { display: flex; }
+.update-btn {
+  background: var(--green);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 5px 14px;
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: var(--font);
+  transition: opacity .15s;
+  flex-shrink: 0;
+}
+.update-btn:hover { opacity: .82; }
+.update-btn:disabled { opacity: .5; cursor: default; }
+.update-btn-later {
+  background: transparent;
+  border: 1px solid rgba(16,185,129,.3);
+  color: var(--green);
+  border-radius: 8px;
+  padding: 5px 12px;
+  cursor: pointer;
+  font-size: 12.5px;
+  font-family: var(--font);
+  transition: all .15s;
+  flex-shrink: 0;
+}
+.update-btn-later:hover { background: rgba(16,185,129,.1); }
+
 /* ── Setup banner ── */
 .setup-banner {
   background: rgba(245,158,11,.1);
@@ -373,6 +415,12 @@ textarea.form-input { min-height: 200px; }
     <a href="/settings" class="btn-icon" title="Einstellungen">⚙ Einstellungen</a>
   </div>
 </header>
+
+<div id="update-banner">
+  ↑ Update verfügbar: Version <strong id="update-version" style="margin:0 4px"></strong>
+  <button class="update-btn" id="update-install-btn" onclick="installUpdate()">Jetzt aktualisieren</button>
+  <button class="update-btn-later" onclick="dismissUpdate()">Später</button>
+</div>
 
 <div class="main">
 
@@ -491,6 +539,7 @@ let localFiles = [];
 document.addEventListener('DOMContentLoaded', () => {
   loadEmails();
   loadContacts();
+  setTimeout(checkForUpdate, 4000);
 });
 
 // ── theme ─────────────────────────────────────────────────────────────────────
@@ -887,6 +936,54 @@ function closePdfModal() {
 document.getElementById('pdf-modal').addEventListener('click', function(e) {
   if (e.target === this) closePdfModal();
 });
+
+// ── update ────────────────────────────────────────────────────────────────────
+async function checkForUpdate() {
+  try {
+    const r = await fetch('/api/update-status');
+    const data = await r.json();
+    if (data.version) {
+      document.getElementById('update-version').textContent = data.version;
+      document.getElementById('update-banner').classList.add('visible');
+    }
+  } catch(e) {}
+}
+
+function dismissUpdate() {
+  document.getElementById('update-banner').classList.remove('visible');
+}
+
+async function installUpdate() {
+  const btn = document.getElementById('update-install-btn');
+  btn.textContent = 'Wird aktualisiert…';
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/do-update', { method: 'POST' });
+    const data = await r.json();
+    if (data.success) {
+      btn.textContent = 'App startet neu…';
+      showToast('Update installiert! App startet neu…', 'ok');
+      setTimeout(_pollUntilRestart, 2500);
+    } else {
+      showToast(data.error || 'Update fehlgeschlagen.', 'err');
+      btn.textContent = 'Jetzt aktualisieren';
+      btn.disabled = false;
+    }
+  } catch(e) {
+    showToast('Update fehlgeschlagen. Bitte erneut versuchen.', 'err');
+    btn.textContent = 'Jetzt aktualisieren';
+    btn.disabled = false;
+  }
+}
+
+function _pollUntilRestart() {
+  const iv = setInterval(async () => {
+    try {
+      const r = await fetch('/');
+      if (r.ok) { clearInterval(iv); location.reload(); }
+    } catch(e) {}
+  }, 1000);
+}
 
 // ── util ──────────────────────────────────────────────────────────────────────
 function esc(s) {
