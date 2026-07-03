@@ -42,6 +42,70 @@ def _cache_read(att_id):
         return None
 
 
+_sent_folder_cache = {}
+
+
+def _find_sent_folder(client, host):
+    if host in _sent_folder_cache:
+        return _sent_folder_cache[host]
+    try:
+        for flags, _delim, name in client.list_folders():
+            if b'\\Sent' in flags:
+                _sent_folder_cache[host] = name
+                return name
+    except Exception:
+        pass
+    for name in ('Sent', 'Sent Items', 'Sent Messages', 'INBOX.Sent', 'Gesendete'):
+        try:
+            client.select_folder(name, readonly=True)
+            _sent_folder_cache[host] = name
+            return name
+        except Exception:
+            pass
+    return None
+
+
+def _parse_message(msg, uid, uid_prefix=''):
+    body_text = ''
+    body_html = ''
+    attachments = []
+
+    def _proc(part):
+        nonlocal body_text, body_html
+        ct = part.get_content_type()
+        cd = str(part.get('Content-Disposition', ''))
+        if 'attachment' in cd or part.get_filename():
+            filename = _decode_str(part.get_filename() or 'Anhang')
+            payload = part.get_payload(decode=True) or b''
+            att_id = f'{uid_prefix}{uid}_{len(attachments)}'
+            _cache_write(att_id, filename, ct or 'application/octet-stream', payload)
+            attachments.append({
+                'id': att_id, 'filename': filename, 'content_type': ct,
+                'size': len(payload),
+                'is_pdf': ct == 'application/pdf' or filename.lower().endswith('.pdf'),
+            })
+        elif ct == 'text/plain' and not body_text:
+            payload = part.get_payload(decode=True)
+            if payload:
+                charset = part.get_content_charset() or 'utf-8'
+                body_text = payload.decode(charset, errors='replace')
+        elif ct == 'text/html' and not body_html:
+            payload = part.get_payload(decode=True)
+            if payload:
+                charset = part.get_content_charset() or 'utf-8'
+                body_html = payload.decode(charset, errors='replace')
+
+    if msg.is_multipart():
+        for part in msg.walk():
+            if part.is_multipart():
+                continue
+            _proc(part)
+    else:
+        _proc(msg)
+
+    return body_text, body_html, attachments
+
+
 # ── helpers ──────────────────────────────────────────────────────────────────
 
 def _decode_str(value):
@@ -187,47 +251,8 @@ def get_email_content(config, uid):
         if uid not in raw:
             client.logout()
             return None, 'not_found'
-
         msg = email.message_from_bytes(raw[uid][b'RFC822'])
-        body_text = ''
-        body_html = ''
-        attachments = []
-
-        def _process_part(part):
-            nonlocal body_text, body_html
-            ct = part.get_content_type()
-            cd = str(part.get('Content-Disposition', ''))
-            if 'attachment' in cd or part.get_filename():
-                filename = _decode_str(part.get_filename() or 'Anhang')
-                payload = part.get_payload(decode=True) or b''
-                att_id = f'{uid}_{len(attachments)}'
-                _cache_write(att_id, filename, ct or 'application/octet-stream', payload)
-                attachments.append({
-                    'id': att_id,
-                    'filename': filename,
-                    'content_type': ct,
-                    'size': len(payload),
-                    'is_pdf': ct == 'application/pdf' or filename.lower().endswith('.pdf'),
-                })
-            elif ct == 'text/plain' and not body_text:
-                payload = part.get_payload(decode=True)
-                if payload:
-                    charset = part.get_content_charset() or 'utf-8'
-                    body_text = payload.decode(charset, errors='replace')
-            elif ct == 'text/html' and not body_html:
-                payload = part.get_payload(decode=True)
-                if payload:
-                    charset = part.get_content_charset() or 'utf-8'
-                    body_html = payload.decode(charset, errors='replace')
-
-        if msg.is_multipart():
-            for part in msg.walk():
-                if part.is_multipart():
-                    continue
-                _process_part(part)
-        else:
-            _process_part(msg)
-
+        body_text, body_html, attachments = _parse_message(msg, uid)
         client.logout()
         return {
             'uid': uid,
@@ -238,6 +263,92 @@ def get_email_content(config, uid):
             'body_text': body_text,
             'body_html': body_html,
             'attachments': attachments,
+        }, None
+    except Exception:
+        try:
+            client.logout()
+        except Exception:
+            pass
+        return None, 'fetch_failed'
+
+
+def get_sent_emails(config, limit=40):
+    client, err = connect_imap2(config)
+    if err:
+        return None, err
+    try:
+        folder = _find_sent_folder(client, config.get('imap2_host', ''))
+        if not folder:
+            client.logout()
+            return [], None
+        client.select_folder(folder, readonly=True)
+        all_uids = sorted(client.search(['ALL']), reverse=True)[:limit]
+        if not all_uids:
+            client.logout()
+            return [], None
+        raw = client.fetch(all_uids, ['ENVELOPE'])
+        emails = []
+        for uid, data in raw.items():
+            env = data.get(b'ENVELOPE')
+            if env is None:
+                continue
+            date_str = ''
+            if env.date:
+                try:
+                    date_str = env.date.strftime('%d.%m.%Y %H:%M')
+                except Exception:
+                    date_str = str(env.date)
+            to_list = env.to or []
+            to_name  = _decode_str(to_list[0].name) if to_list else ''
+            to_email = (
+                f"{_decode_str(to_list[0].mailbox)}@{_decode_str(to_list[0].host)}"
+                if to_list else ''
+            )
+            emails.append({
+                'uid': uid,
+                'sender_name': to_name or to_email,
+                'sender_email': to_email,
+                'subject': _decode_str(env.subject) or '(Kein Betreff)',
+                'date': date_str,
+                'unread': False,
+            })
+        client.logout()
+        return emails, None
+    except Exception:
+        try:
+            client.logout()
+        except Exception:
+            pass
+        return None, 'fetch_failed'
+
+
+def get_sent_email_content(config, uid):
+    client, err = connect_imap2(config)
+    if err:
+        return None, err
+    try:
+        folder = _find_sent_folder(client, config.get('imap2_host', ''))
+        if not folder:
+            client.logout()
+            return None, 'not_found'
+        client.select_folder(folder, readonly=True)
+        raw = client.fetch([uid], ['RFC822'])
+        if uid not in raw:
+            client.logout()
+            return None, 'not_found'
+        msg = email.message_from_bytes(raw[uid][b'RFC822'])
+        body_text, body_html, attachments = _parse_message(msg, uid, uid_prefix='s')
+        client.logout()
+        return {
+            'uid': uid,
+            'subject': _decode_str(msg.get('Subject', '')) or '(Kein Betreff)',
+            'from': _decode_str(msg.get('From', '')),
+            'to': _decode_str(msg.get('To', '')),
+            'date': msg.get('Date', ''),
+            'body_text': body_text,
+            'body_html': body_html,
+            'attachments': attachments,
+            'is_sent': True,
         }, None
     except Exception:
         try:
@@ -288,11 +399,13 @@ def mark_as_read(config, uid):
 
 
 def send_email(config, to_name, to_email, subject, body,
-               attachment_ids=None, local_files=None):
+               attachment_ids=None, local_files=None, cc=None):
     try:
         msg = MIMEMultipart()
         msg['From'] = config['imap2_email']
         msg['To'] = f'{to_name} <{to_email}>' if to_name else to_email
+        if cc:
+            msg['Cc'] = cc
         msg['Subject'] = subject
         msg.attach(MIMEText(body, 'plain', 'utf-8'))
 
@@ -316,18 +429,22 @@ def send_email(config, to_name, to_email, subject, body,
                             filename=fi['filename'])
             msg.attach(part)
 
+        recipients = [to_email]
+        if cc:
+            recipients.extend(a.strip() for a in cc.split(',') if a.strip())
+
         ctx = ssl.create_default_context()
         smtp_type = config.get('smtp2_type', 'ssl')
         if smtp_type == 'starttls':
             with smtplib.SMTP(config['smtp2_host'], int(config['smtp2_port'])) as srv:
                 srv.starttls(context=ctx)
                 srv.login(config['imap2_email'], config['imap2_password'])
-                srv.sendmail(config['imap2_email'], to_email, msg.as_bytes())
+                srv.sendmail(config['imap2_email'], recipients, msg.as_bytes())
         else:
             with smtplib.SMTP_SSL(config['smtp2_host'],
                                   int(config['smtp2_port']), context=ctx) as srv:
                 srv.login(config['imap2_email'], config['imap2_password'])
-                srv.sendmail(config['imap2_email'], to_email, msg.as_bytes())
+                srv.sendmail(config['imap2_email'], recipients, msg.as_bytes())
         return None
     except smtplib.SMTPAuthenticationError:
         return 'smtp_auth_failed'

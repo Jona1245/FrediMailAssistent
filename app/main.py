@@ -13,6 +13,7 @@ from flask import Flask, render_template, jsonify, request, send_file, abort
 from config_manager import load_config, save_config
 from email_client import (
     get_unread_emails, get_email_content, get_attachment,
+    get_sent_emails, get_sent_email_content,
     mark_as_read, mark_all_read, send_email, test_imap1, test_imap2,
 )
 from ai_generator import (
@@ -203,7 +204,7 @@ def api_email(uid):
 
 @app.route('/api/attachment/<att_id>')
 def api_attachment(att_id):
-    if not re.match(r'^\d+_\d+$', att_id):
+    if not re.match(r'^s?\d+_\d+$', att_id):
         abort(404)
     att = get_attachment(att_id)
     if not att:
@@ -214,6 +215,26 @@ def api_attachment(att_id):
         as_attachment=False,
         download_name=att['filename'],
     )
+
+
+@app.route('/api/sent-emails')
+def api_sent_emails():
+    config = load_config()
+    if not config.get('imap2_email') or not config.get('imap2_password'):
+        return jsonify({'error': 'Postfach 2 nicht konfiguriert.'})
+    emails, error = get_sent_emails(config)
+    if error:
+        return jsonify({'error': err(error, config.get('imap2_host'))})
+    return jsonify({'emails': emails})
+
+
+@app.route('/api/sent-email/<int:uid>')
+def api_sent_email(uid):
+    config = load_config()
+    content, error = get_sent_email_content(config, uid)
+    if error:
+        return jsonify({'error': err(error, config.get('imap2_host'))})
+    return jsonify(content)
 
 
 @app.route('/api/mark-all-read', methods=['POST'])
@@ -267,6 +288,7 @@ def api_send():
     subject = request.form.get('subject', '').strip()
     body = request.form.get('body', '').strip()
     attachment_ids = request.form.getlist('attachment_ids')
+    cc = request.form.get('cc', '').strip()
     source_uid = request.form.get('source_uid')
 
     if not to_email:
@@ -283,7 +305,7 @@ def api_send():
             local_files.append({'filename': f.filename, 'data': f.read()})
 
     error = send_email(config, to_name, to_email, subject, body,
-                       attachment_ids or None, local_files or None)
+                       attachment_ids or None, local_files or None, cc or None)
     if error:
         return jsonify({'error': err(error)})
 

@@ -413,6 +413,40 @@ textarea.form-input { min-height: 300px; }
 }
 .cd-delete:hover { color: var(--red); background: rgba(244,63,94,.1); }
 
+/* ── Inbox tabs ── */
+.tab-btn {
+  background: none; border: none; cursor: pointer;
+  font-size: 11.5px; font-weight: 600; font-family: var(--font);
+  color: var(--text3); padding: 5px 10px; border-radius: 7px;
+  transition: all .15s; text-transform: uppercase; letter-spacing: .5px;
+  white-space: nowrap;
+}
+.tab-btn:hover { color: var(--text); background: var(--bg3); }
+.tab-btn.tab-active { color: var(--accent); background: var(--accent-glow); }
+
+/* ── Inbox filter bar ── */
+#inbox-filter-bar {
+  padding: 7px 12px; border-bottom: 1px solid var(--border);
+  display: flex; gap: 6px; align-items: center;
+  background: var(--bg2); flex-shrink: 0;
+}
+#inbox-search {
+  flex: 1; padding: 5px 10px; font-size: 12px;
+  border-radius: 8px; border: 1px solid var(--border2);
+  background: var(--card); color: var(--text); font-family: var(--font);
+  outline: none; min-width: 0;
+}
+#inbox-search:focus { border-color: var(--accent); }
+#inbox-search::placeholder { color: var(--text3); }
+.filter-toggle-btn {
+  background: var(--bg3); border: 1px solid var(--border2);
+  color: var(--text3); border-radius: 7px; padding: 5px 9px;
+  cursor: pointer; font-size: 11px; font-family: var(--font);
+  font-weight: 500; transition: all .15s; white-space: nowrap;
+}
+.filter-toggle-btn.active { background: var(--accent-glow); border-color: var(--accent); color: var(--accent); }
+.filter-toggle-btn:hover { border-color: var(--accent); }
+
 /* ── Attachment select buttons ── */
 .att-select-btn {
   background: var(--bg3);
@@ -469,13 +503,18 @@ textarea.form-input { min-height: 300px; }
   <!-- ═══ LEFT: Email list ═══ -->
   <div class="col">
     <div class="col-header">
-      Posteingang
+      <button class="tab-btn tab-active" id="tab-inbox" onclick="switchTab('inbox')">📥 Eingang</button>
+      <button class="tab-btn" id="tab-sent" onclick="switchTab('sent')">📤 Gesendet</button>
       <span id="unread-badge" class="badge" style="display:none"></span>
       <button class="btn-icon" id="mark-all-btn"
               style="margin-left:auto;font-size:11px;padding:4px 10px"
               onclick="markAllRead()" title="Alle als gelesen markieren">
         ✓ Alle gelesen
       </button>
+    </div>
+    <div id="inbox-filter-bar">
+      <input type="text" id="inbox-search" placeholder="🔍 Suchen…" oninput="applyFilters()">
+      <button class="filter-toggle-btn" id="unread-filter-btn" onclick="toggleUnreadFilter()">Nur ungelesen</button>
     </div>
     <div class="col-body">
       {% if needs_setup %}
@@ -522,6 +561,7 @@ textarea.form-input { min-height: 300px; }
           <div style="display:flex;flex-direction:column;gap:8px">
             <input type="text"  id="to-name"  class="form-input" placeholder="Name (z. B. Max Mustermann)">
             <input type="email" id="to-email" class="form-input" placeholder="E-Mail-Adresse *">
+            <input type="text"  id="cc-email" class="form-input" placeholder="CC (optional, Komma-getrennt)">
           </div>
         </div>
 
@@ -583,7 +623,10 @@ textarea.form-input { min-height: 300px; }
 let currentEmail = null;
 let contacts = [];
 let localFiles = [];
-let selectedContactOriginal = null; // { name, email } of contact picked from dropdown
+let selectedContactOriginal = null;
+let currentTab = 'inbox';
+let showOnlyUnread = false;
+let allEmails = [];
 
 // ── init ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -638,6 +681,7 @@ function initials(name) {
 
 // ── load email list ───────────────────────────────────────────────────────────
 async function loadEmails() {
+  if (currentTab === 'sent') { loadSentEmails(); return; }
   const activeUid = document.querySelector('.email-item.active')?.id?.replace('ei-', '');
   document.getElementById('list-spinner').classList.add('active');
   document.getElementById('email-list').innerHTML = '';
@@ -650,12 +694,113 @@ async function loadEmails() {
         `<li><div class="empty-state" style="color:var(--red)">${data.error}</div></li>`;
       return;
     }
-    renderEmailList(data.emails || [], activeUid);
+    allEmails = data.emails || [];
+    applyFilters(activeUid);
   } catch(e) {
     document.getElementById('list-spinner').classList.remove('active');
     document.getElementById('email-list').innerHTML =
       `<li><div class="empty-state" style="color:var(--red)">Verbindung fehlgeschlagen.</div></li>`;
   }
+}
+
+function applyFilters(activeUid) {
+  let filtered = allEmails;
+  if (showOnlyUnread) filtered = filtered.filter(e => e.unread);
+  const q = (document.getElementById('inbox-search').value || '').toLowerCase().trim();
+  if (q) filtered = filtered.filter(e =>
+    e.sender_name.toLowerCase().includes(q) ||
+    e.sender_email.toLowerCase().includes(q) ||
+    e.subject.toLowerCase().includes(q)
+  );
+  renderEmailList(filtered, activeUid);
+}
+
+function toggleUnreadFilter() {
+  showOnlyUnread = !showOnlyUnread;
+  document.getElementById('unread-filter-btn').classList.toggle('active', showOnlyUnread);
+  applyFilters();
+}
+
+async function loadSentEmails() {
+  document.getElementById('list-spinner').classList.add('active');
+  document.getElementById('email-list').innerHTML = '';
+  try {
+    const r = await fetch('/api/sent-emails');
+    const data = await r.json();
+    document.getElementById('list-spinner').classList.remove('active');
+    if (data.error) {
+      document.getElementById('email-list').innerHTML =
+        `<li><div class="empty-state" style="color:var(--red)">${data.error}</div></li>`;
+      return;
+    }
+    renderSentList(data.emails || []);
+  } catch(e) {
+    document.getElementById('list-spinner').classList.remove('active');
+    document.getElementById('email-list').innerHTML =
+      `<li><div class="empty-state" style="color:var(--red)">Verbindung fehlgeschlagen.</div></li>`;
+  }
+}
+
+function renderSentList(emails) {
+  const list = document.getElementById('email-list');
+  if (!emails.length) {
+    list.innerHTML = `<li><div class="empty-state"><div class="empty-state-icon">📤</div>Keine gesendeten E-Mails.</div></li>`;
+    return;
+  }
+  emails.sort((a, b) => b.uid - a.uid);
+  list.innerHTML = emails.map(e => {
+    const name  = e.sender_name || e.sender_email || '?';
+    const color = avatarColor(name);
+    const ini   = initials(name);
+    return `
+      <li class="email-item" onclick="loadSentEmail(${e.uid})" id="sei-${e.uid}">
+        <div class="ei-avatar" style="background:${color}">${ini}</div>
+        <div class="ei-info">
+          <div class="ei-top">
+            <span class="ei-name">An: ${esc(name)}</span>
+            <span class="ei-date">${esc(e.date)}</span>
+          </div>
+          <div class="ei-subject">${esc(e.subject)}</div>
+        </div>
+      </li>`;
+  }).join('');
+}
+
+async function loadSentEmail(uid) {
+  document.querySelectorAll('.email-item').forEach(el => el.classList.remove('active'));
+  const li = document.getElementById(`sei-${uid}`);
+  if (li) li.classList.add('active');
+  document.getElementById('email-content').innerHTML =
+    '<div class="spinner active" style="padding:60px 20px"><div class="spin"></div> Wird geladen…</div>';
+  resetCompose();
+  const r = await fetch(`/api/sent-email/${uid}`);
+  const data = await r.json();
+  if (data.error) {
+    document.getElementById('email-content').innerHTML =
+      `<div class="empty-state" style="color:var(--red)">${data.error}</div>`;
+    return;
+  }
+  currentEmail = data;
+  renderEmailContent(data);
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('tab-inbox').classList.toggle('tab-active', tab === 'inbox');
+  document.getElementById('tab-sent').classList.toggle('tab-active', tab === 'sent');
+  const inboxControls = ['mark-all-btn', 'unread-badge', 'unread-filter-btn'];
+  inboxControls.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = tab === 'inbox' ? '' : 'none';
+  });
+  resetCompose();
+  document.getElementById('email-content').innerHTML =
+    '<div class="empty-state"><div class="empty-state-icon">' +
+    (tab === 'inbox' ? '✉' : '📤') + '</div>' +
+    (tab === 'inbox' ? 'Wähle eine E-Mail aus, um sie zu lesen.' : 'Wähle eine gesendete E-Mail aus.') +
+    '</div>';
+  if (tab === 'inbox') loadEmails();
+  else loadSentEmails();
 }
 
 function renderEmailList(emails, activeUid) {
@@ -787,6 +932,9 @@ function stripHtml(html) {
 function renderEmailContent(data) {
   const body = data.body_text || stripHtml(data.body_html) || '(Kein Text-Inhalt)';
   const attHtml = (data.attachments || []).length ? renderAttachmentList(data.attachments) : '';
+  const fwdBtn = `<div class="ec-actions">
+    <button class="btn-icon" onclick="forwardEmail()" style="font-size:12px;padding:5px 12px">↪ Weiterleiten</button>
+  </div>`;
 
   document.getElementById('email-content').innerHTML = `
     <div id="ec-inner">
@@ -800,8 +948,23 @@ function renderEmailContent(data) {
       </div>
       ${attHtml}
       <div class="ec-body">${esc(body)}</div>
+      ${fwdBtn}
     </div>
   `;
+}
+
+function forwardEmail() {
+  if (!currentEmail) return;
+  const body = currentEmail.body_text || stripHtml(currentEmail.body_html) || '';
+  const fwdBody = `\n\n-------- Weitergeleitete Nachricht --------\nVon: ${currentEmail.from}\nDatum: ${currentEmail.date}\nBetreff: ${currentEmail.subject}\n\n${body}`;
+  document.getElementById('compose-subject').value = `Fwd: ${currentEmail.subject}`;
+  document.getElementById('compose-body').value = fwdBody;
+  document.getElementById('email-editor').style.display = 'block';
+  document.getElementById('send-btn').style.display = 'block';
+  document.getElementById('send-btn').disabled = false;
+  document.getElementById('to-name').value = '';
+  document.getElementById('to-email').value = '';
+  document.getElementById('to-name').focus();
 }
 
 function renderAttachmentList(atts) {
@@ -849,6 +1012,7 @@ function resetCompose() {
   document.getElementById('send-status').style.display   = 'none';
   document.getElementById('gen-spinner').classList.remove('active');
   document.getElementById('contact-search').value        = '';
+  document.getElementById('cc-email').value               = '';
   document.getElementById('contact-dropdown').classList.remove('open');
   selectedContactOriginal = null;
 }
@@ -1066,6 +1230,8 @@ async function sendEmail() {
   fd.append('subject',  subject);
   fd.append('body',     body);
   if (currentEmail) fd.append('source_uid', currentEmail.uid);
+  const cc = document.getElementById('cc-email').value.trim();
+  if (cc) fd.append('cc', cc);
 
   document.querySelectorAll('#compose-attachments input[type=checkbox]:checked').forEach(cb => {
     fd.append('attachment_ids', cb.value);
@@ -1104,6 +1270,7 @@ async function sendEmail() {
         document.getElementById('send-btn').disabled           = true;
         document.getElementById('attach-section').style.display = 'none';
         document.getElementById('compose-attachments').innerHTML = '';
+        document.getElementById('cc-email').value = '';
       }, 2000);
     }
   } catch(e) {
