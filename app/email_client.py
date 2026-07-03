@@ -251,6 +251,25 @@ def get_attachment(att_id):
     return _cache_read(att_id)
 
 
+def mark_all_read(config):
+    client, err = connect_imap1(config)
+    if err:
+        return err, 0
+    try:
+        client.select_folder('INBOX')
+        uids = client.search(['UNSEEN'])
+        if uids:
+            client.set_flags(uids, [b'\\Seen'])
+        client.logout()
+        return None, len(uids)
+    except Exception:
+        try:
+            client.logout()
+        except Exception:
+            pass
+        return 'mark_failed', 0
+
+
 def mark_as_read(config, uid):
     client, err = connect_imap1(config)
     if err:

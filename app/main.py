@@ -13,7 +13,7 @@ from flask import Flask, render_template, jsonify, request, send_file, abort
 from config_manager import load_config, save_config
 from email_client import (
     get_unread_emails, get_email_content, get_attachment,
-    mark_as_read, send_email, test_imap1, test_imap2,
+    mark_as_read, mark_all_read, send_email, test_imap1, test_imap2,
 )
 from ai_generator import (
     generate_email, list_style_examples,
@@ -107,23 +107,26 @@ _ERRORS = {
     'smtp_auth_failed': 'Anmeldung bei Postfach 2 fehlgeschlagen. Zugangsdaten in den Einstellungen prüfen.',
     'smtp_failed': 'E-Mail konnte nicht gesendet werden. Bitte erneut versuchen.',
     'send_failed': 'E-Mail konnte nicht gesendet werden. Internetverbindung prüfen.',
-    'no_api_key': 'Kein API-Key eingetragen. Bitte Gemini- oder Claude-Key in den Einstellungen hinterlegen.',
+    'no_api_key': 'Kein API-Key eingetragen. Bitte einen Key in den Einstellungen hinterlegen.',
     'no_gemini_key': 'Kein Gemini API-Key eingetragen. Bitte in den Einstellungen hinterlegen.',
+    'no_openrouter_key': 'Kein OpenRouter API-Key eingetragen. Bitte in den Einstellungen hinterlegen.',
     'auth_failed': 'Claude API-Key ungültig. Bitte unter console.anthropic.com prüfen.',
     'gemini_auth_failed': 'Gemini API-Key ungültig. Bitte unter aistudio.google.com/apikey prüfen.',
+    'openrouter_auth_failed': 'OpenRouter API-Key ungültig. Bitte unter openrouter.ai/keys prüfen.',
     'connection_failed_ai': 'KI nicht erreichbar. Bitte Internetverbindung prüfen.',
     'api_error': 'KI-Generierung fehlgeschlagen. Bitte erneut versuchen.',
 }
 
 MASKED = '••••••••'
-SECRET_FIELDS = ('imap1_password', 'imap2_password', 'claude_api_key', 'gemini_api_key')
+SECRET_FIELDS = ('imap1_password', 'imap2_password', 'claude_api_key', 'gemini_api_key', 'openrouter_api_key')
 
 _ALLOWED_CONFIG_KEYS = {
     'imap1_host', 'imap1_port', 'imap1_email', 'imap1_password',
     'imap2_host', 'imap2_port', 'smtp2_host', 'smtp2_port', 'smtp2_type',
     'imap2_email', 'imap2_password',
     'claude_api_key', 'claude_model',
-    'gemini_api_key', 'gemini_model', 'ai_provider',
+    'gemini_api_key', 'gemini_model',
+    'openrouter_api_key', 'ai_provider',
     'system_prompt', 'filter_rules', 'theme',
 }
 
@@ -213,6 +216,15 @@ def api_attachment(att_id):
     )
 
 
+@app.route('/api/mark-all-read', methods=['POST'])
+def api_mark_all_read():
+    config = load_config()
+    error, count = mark_all_read(config)
+    if error:
+        return jsonify({'error': err(error, config.get('imap1_host'))})
+    return jsonify({'success': True, 'count': count})
+
+
 @app.route('/api/mark-read', methods=['POST'])
 def api_mark_read():
     uid = (request.json or {}).get('uid')
@@ -240,7 +252,7 @@ def api_generate():
     config = load_config()
     result, error = generate_email(source_text, customer_name, customer_email, config)
     if error:
-        return jsonify({'error': err(error)})
+        return jsonify({'error': err(error) if error in _ERRORS else error})
     return jsonify(result)
 
 
@@ -280,12 +292,6 @@ def api_send():
             mark_as_read(config, int(source_uid))
         except (ValueError, TypeError):
             pass
-
-    if to_email:
-        contacts = load_contacts()
-        if not any(c['email'].lower() == to_email.lower() for c in contacts):
-            if to_name:
-                add_contact(to_name, to_email)
 
     return jsonify({'success': True})
 
@@ -381,6 +387,20 @@ def api_upload_style():
 @app.route('/api/style-examples/<filename>', methods=['DELETE'])
 def api_delete_style(filename):
     delete_style_example(filename)
+    return jsonify({'success': True})
+
+
+# ── restart ───────────────────────────────────────────────────────────────────
+
+@app.route('/api/restart', methods=['POST'])
+def api_restart():
+    def _do():
+        _time.sleep(1)
+        python_exe = os.environ.get('FREDI_PYTHON', sys.executable)
+        launcher = os.environ.get('FREDI_LAUNCHER', os.path.join(_BASE_DIR, 'launcher.py'))
+        subprocess.Popen([python_exe, launcher])
+        os._exit(0)
+    threading.Thread(target=_do, daemon=True).start()
     return jsonify({'success': True})
 
 

@@ -248,7 +248,11 @@ label { font-size: 12px; font-weight: 600; color: var(--text3); text-transform: 
           <select id="ai_provider" class="form-input" onchange="updateAiProviderUI()">
             <option value="auto"
               {% if not config.ai_provider or config.ai_provider == 'auto' %}selected{% endif %}>
-              Automatisch (Gemini falls verfügbar, sonst Claude)
+              Automatisch (OpenRouter → Gemini → Claude)
+            </option>
+            <option value="openrouter"
+              {% if config.ai_provider == 'openrouter' %}selected{% endif %}>
+              OpenRouter (kostenlos, 5 Modelle mit Priorität)
             </option>
             <option value="gemini"
               {% if config.ai_provider == 'gemini' %}selected{% endif %}>
@@ -259,6 +263,25 @@ label { font-size: 12px; font-weight: 600; color: var(--text3); text-transform: 
               Anthropic Claude (kostenpflichtig)
             </option>
           </select>
+        </div>
+      </div>
+
+      <!-- OpenRouter -->
+      <div id="openrouter-section">
+        <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:10px;
+                    padding-top:10px;border-top:1px solid var(--border)">
+          OpenRouter — Kostenlose Modelle (Priorität 1→5)
+        </div>
+        <div class="field">
+          <label>OpenRouter API-Key</label>
+          <input type="password" id="openrouter_api_key" class="form-input"
+                 value="{{ config.openrouter_api_key }}" placeholder="sk-or-..."
+                 autocomplete="new-password">
+          <div class="hint">
+            Kostenlos erhältlich unter
+            <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai/keys</a><br>
+            Priorität: Llama 3.3 70B → Qwen3 80B → GPT-OSS 120B → Nemotron 120B → Gemma 31B
+          </div>
         </div>
       </div>
 
@@ -387,6 +410,7 @@ label { font-size: 12px; font-weight: 600; color: var(--text3); text-transform: 
 <!-- Save bar -->
 <div class="save-bar">
   <button class="btn btn-success" onclick="saveAll()">💾 Einstellungen speichern</button>
+  <button class="btn btn-outline btn-sm" onclick="restartApp()" id="restart-btn">🔄 Neu starten</button>
   <span id="save-status" class="save-status"></span>
 </div>
 
@@ -400,18 +424,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function updateAiProviderUI() {
   const provider = document.getElementById('ai_provider').value;
-  const geminiSection  = document.getElementById('gemini-section');
-  const anthropicSection = document.getElementById('anthropic-section');
-  if (provider === 'gemini') {
-    geminiSection.style.display  = '';
-    anthropicSection.style.display = 'none';
-  } else if (provider === 'anthropic') {
-    geminiSection.style.display  = 'none';
-    anthropicSection.style.display = '';
-  } else {
-    geminiSection.style.display  = '';
-    anthropicSection.style.display = '';
-  }
+  const openrouterSection = document.getElementById('openrouter-section');
+  const geminiSection     = document.getElementById('gemini-section');
+  const anthropicSection  = document.getElementById('anthropic-section');
+  openrouterSection.style.display = (provider === 'openrouter' || provider === 'auto') ? '' : 'none';
+  geminiSection.style.display     = (provider === 'gemini'     || provider === 'auto') ? '' : 'none';
+  anthropicSection.style.display  = (provider === 'anthropic'  || provider === 'auto') ? '' : 'none';
 }
 
 function toggleTheme() {
@@ -432,7 +450,7 @@ async function saveAll() {
   const fields = [
     'imap1_host','imap1_port','imap1_email','imap1_password',
     'imap2_host','imap2_port','smtp2_host','smtp2_port','smtp2_type','imap2_email','imap2_password',
-    'gemini_api_key','gemini_model','claude_api_key','claude_model','ai_provider',
+    'openrouter_api_key','gemini_api_key','gemini_model','claude_api_key','claude_model','ai_provider',
     'system_prompt','filter_rules',
   ];
   const data = {};
@@ -450,9 +468,10 @@ async function saveAll() {
     });
     const res = await r.json();
     if (res.success) {
-      status.textContent = '✓ Gespeichert!';
+      status.textContent = '✓ Gespeichert! Weiterleitung…';
       status.className = 'save-status save-ok';
       showToast('Einstellungen gespeichert!', 'ok');
+      setTimeout(() => { window.location.href = '/'; }, 900);
     } else {
       status.textContent = '✕ Fehler beim Speichern.';
       status.className = 'save-status save-err';
@@ -533,6 +552,30 @@ async function deleteStyleExample(filename) {
   await fetch(`/api/style-examples/${encodeURIComponent(filename)}`, { method: 'DELETE' });
   loadStyleExamples();
   showToast('Stil-Beispiel gelöscht.', 'ok');
+}
+
+async function restartApp() {
+  const btn = document.getElementById('restart-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Wird neu gestartet…';
+  try {
+    await fetch('/api/restart', { method: 'POST' });
+  } catch(e) {}
+  const start = Date.now();
+  const poll = setInterval(async () => {
+    try {
+      await fetch('/');
+      clearInterval(poll);
+      location.reload();
+    } catch(e) {
+      if (Date.now() - start > 20000) {
+        clearInterval(poll);
+        btn.disabled = false;
+        btn.textContent = '🔄 Neu starten';
+        showToast('Neustart fehlgeschlagen.', 'err');
+      }
+    }
+  }, 800);
 }
 
 function esc(s) {

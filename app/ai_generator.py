@@ -74,6 +74,66 @@ def _parse_response(text):
     return {'subject': subject, 'body': body}
 
 
+_OPENROUTER_MODELS = [
+    'qwen/qwen3-next-80b-a3b-instruct:free',   # ~3B active, sehr schnell
+    'google/gemma-4-31b-it:free',               # 31B, schnell
+    'nvidia/nemotron-3-super-120b-a12b:free',   # ~12B active, mittel
+    'meta-llama/llama-3.3-70b-instruct:free',   # 70B, langsamer aber top Qualität
+    'openai/gpt-oss-120b:free',                 # Fallback
+]
+
+
+def _generate_openrouter(source_text, customer_name, customer_email, config):
+    import requests as _req
+    api_key = config.get('openrouter_api_key', '').strip()
+    if not api_key:
+        return None, 'no_openrouter_key'
+
+    system, user_msg = _build_prompts(source_text, customer_name, customer_email, config)
+    headers = {
+        'Authorization': f'Bearer {api_key}',
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://github.com/Jona1245/FrediMailAssistent',
+        'X-Title': 'FrediMailAssistent',
+    }
+    messages = []
+    if system:
+        messages.append({'role': 'system', 'content': system})
+    messages.append({'role': 'user', 'content': user_msg})
+
+    last_error = 'Alle Modelle fehlgeschlagen.'
+    for model in _OPENROUTER_MODELS:
+        try:
+            resp = _req.post(
+                'https://openrouter.ai/api/v1/chat/completions',
+                headers=headers,
+                json={'model': model, 'messages': messages, 'max_tokens': 1500},
+                timeout=60,
+            )
+            if resp.status_code == 401:
+                return None, 'openrouter_auth_failed'
+            if resp.status_code not in (200,):
+                last_error = f'{model}: HTTP {resp.status_code}'
+                continue
+            data = resp.json()
+            choices = data.get('choices') or []
+            if not choices:
+                # OpenRouter may return an error object inside 200
+                err_obj = data.get('error', {})
+                last_error = f'{model}: {err_obj.get("message", "Kein Ergebnis")}'
+                continue
+            text = (choices[0].get('message') or {}).get('content', '').strip()
+            if not text:
+                last_error = f'{model}: Leere Antwort'
+                continue
+            return _parse_response(text), None
+        except Exception as e:
+            last_error = f'{model}: {str(e)[:150]}'
+            continue
+
+    return None, f'OpenRouter-Fehler: {last_error}'
+
+
 def _generate_anthropic(source_text, customer_name, customer_email, config):
     api_key = config.get('claude_api_key', '').strip()
     if not api_key:
@@ -97,8 +157,8 @@ def _generate_anthropic(source_text, customer_name, customer_email, config):
         return None, 'auth_failed'
     except anthropic.APIConnectionError:
         return None, 'connection_failed_ai'
-    except Exception:
-        return None, 'api_error'
+    except Exception as e:
+        return None, f'Claude-Fehler: {str(e)[:300]}'
 
 
 def _generate_gemini(source_text, customer_name, customer_email, config):
@@ -121,19 +181,24 @@ def _generate_gemini(source_text, customer_name, customer_email, config):
         msg = str(e).lower()
         if any(x in msg for x in ('api key', 'invalid', 'permission', 'unauthenticated', '401', '403')):
             return None, 'gemini_auth_failed'
-        return None, 'api_error'
+        return None, f'Gemini-Fehler: {str(e)[:300]}'
 
 
 def generate_email(source_text, customer_name, customer_email, config):
     provider = config.get('ai_provider', 'auto')
     claude_key = config.get('claude_api_key', '').strip()
     gemini_key = config.get('gemini_api_key', '').strip()
+    openrouter_key = config.get('openrouter_api_key', '').strip()
 
     if provider == 'gemini':
         return _generate_gemini(source_text, customer_name, customer_email, config)
     if provider == 'anthropic':
         return _generate_anthropic(source_text, customer_name, customer_email, config)
-    # auto: Gemini bevorzugen (kostenlos), Anthropic als Fallback
+    if provider == 'openrouter':
+        return _generate_openrouter(source_text, customer_name, customer_email, config)
+    # auto: OpenRouter → Gemini → Claude
+    if openrouter_key:
+        return _generate_openrouter(source_text, customer_name, customer_email, config)
     if gemini_key:
         return _generate_gemini(source_text, customer_name, customer_email, config)
     if claude_key:
