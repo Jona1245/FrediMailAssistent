@@ -188,25 +188,28 @@ def test_imap2(config):
     return None
 
 
-def get_unread_emails(config, limit=60):
+def get_unread_emails(config, limit=60, before_uid=None):
     client, err = connect_imap1(config)
     if err:
         return None, err
     try:
         client.select_folder('INBOX', readonly=True)
+        all_sorted = sorted(client.search(['ALL']), reverse=True)
 
-        # Always include every UNSEEN email, then fill with recent ALL up to limit.
-        # This guarantees unread messages are visible even in a large mailbox.
-        unseen_uids = set(client.search(['UNSEEN']))
-        recent_uids = sorted(client.search(['ALL']), reverse=True)[:limit]
-        cap = max(limit, min(len(unseen_uids), 100))
-        combined = sorted(set(recent_uids) | unseen_uids, reverse=True)[:cap]
+        if before_uid:
+            page = [u for u in all_sorted if u < before_uid][:limit]
+        else:
+            unseen_uids = set(client.search(['UNSEEN']))
+            recent = set(all_sorted[:limit])
+            cap = max(limit, min(len(unseen_uids), 100))
+            page = sorted(recent | unseen_uids, reverse=True)[:cap]
 
-        if not combined:
+        if not page:
             client.logout()
             return [], None
 
-        raw = client.fetch(combined, ['ENVELOPE', 'FLAGS'])
+        has_more = any(u < min(page) for u in all_sorted)
+        raw = client.fetch(page, ['ENVELOPE', 'FLAGS'])
         emails = []
         for uid, data in raw.items():
             env = data.get(b'ENVELOPE')
@@ -232,13 +235,13 @@ def get_unread_emails(config, limit=60):
                 'unread': unread,
             })
         client.logout()
-        return emails, None
+        return emails, None, has_more
     except Exception:
         try:
             client.logout()
         except Exception:
             pass
-        return None, 'fetch_failed'
+        return None, 'fetch_failed', False
 
 
 def get_email_content(config, uid):
@@ -272,7 +275,7 @@ def get_email_content(config, uid):
         return None, 'fetch_failed'
 
 
-def get_sent_emails(config, limit=40):
+def get_sent_emails(config, limit=40, before_uid=None):
     client, err = connect_imap2(config)
     if err:
         return None, err
@@ -280,13 +283,18 @@ def get_sent_emails(config, limit=40):
         folder = _find_sent_folder(client, config.get('imap2_host', ''))
         if not folder:
             client.logout()
-            return [], None
+            return [], None, False
         client.select_folder(folder, readonly=True)
-        all_uids = sorted(client.search(['ALL']), reverse=True)[:limit]
-        if not all_uids:
+        all_sorted = sorted(client.search(['ALL']), reverse=True)
+        if before_uid:
+            page = [u for u in all_sorted if u < before_uid][:limit]
+        else:
+            page = all_sorted[:limit]
+        if not page:
             client.logout()
-            return [], None
-        raw = client.fetch(all_uids, ['ENVELOPE'])
+            return [], None, False
+        has_more = any(u < min(page) for u in all_sorted)
+        raw = client.fetch(page, ['ENVELOPE'])
         emails = []
         for uid, data in raw.items():
             env = data.get(b'ENVELOPE')
@@ -313,13 +321,13 @@ def get_sent_emails(config, limit=40):
                 'unread': False,
             })
         client.logout()
-        return emails, None
+        return emails, None, has_more
     except Exception:
         try:
             client.logout()
         except Exception:
             pass
-        return None, 'fetch_failed'
+        return None, 'fetch_failed', False
 
 
 def get_sent_email_content(config, uid):

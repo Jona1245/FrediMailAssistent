@@ -34,7 +34,7 @@ header { padding: 0 20px; height: 52px; flex-shrink: 0; gap: 14px; }
 /* ── 3-column layout ── */
 .main {
   display: grid;
-  grid-template-columns: 260px 1fr 430px;
+  grid-template-columns: 260px 1fr 540px;
   flex: 1;
   overflow: hidden;
 }
@@ -191,9 +191,19 @@ header { padding: 0 20px; height: 52px; flex-shrink: 0; gap: 14px; }
   padding-right: 32px;
 }
 
-textarea.form-input { min-height: 300px; }
+textarea.form-input { min-height: 420px; }
 #compose-subject { font-size: 14px; font-weight: 600; }
 #compose-body    { font-size: 13.5px; line-height: 1.75; }
+
+/* Compact recipient inputs */
+#contact-search-wrap .form-input,
+#to-name, #to-email, #cc-email {
+  padding: 6px 9px;
+  font-size: 12px;
+}
+
+/* Smaller gen button */
+.btn-gen { padding: 10px 16px; font-size: 13px; }
 
 #compose-attachments { display: flex; flex-direction: column; gap: 6px; }
 .compose-att {
@@ -462,6 +472,17 @@ textarea.form-input { min-height: 300px; }
 }
 .att-select-btn:hover { border-color: var(--accent); color: var(--accent); }
 
+/* ── Load more button ── */
+#load-more-btn {
+  width: 100%; padding: 12px; background: var(--bg2);
+  border: none; border-top: 1px solid var(--border);
+  color: var(--accent); cursor: pointer; font-size: 12.5px;
+  font-weight: 600; font-family: var(--font);
+  transition: background .15s;
+}
+#load-more-btn:hover { background: var(--card); }
+#load-more-btn:disabled { color: var(--text3); cursor: default; }
+
 /* ── Setup banner ── */
 .setup-banner {
   background: rgba(245,158,11,.1);
@@ -545,7 +566,13 @@ textarea.form-input { min-height: 300px; }
 
   <!-- ═══ RIGHT: Compose ═══ -->
   <div class="col">
-    <div class="col-header">Antwort erstellen</div>
+    <div class="col-header">
+      Antwort erstellen
+      <button class="btn-icon" onclick="startNewEmail()"
+              style="margin-left:auto;font-size:11px;padding:4px 10px">
+        ✉ Neue E-Mail
+      </button>
+    </div>
     <div class="col-body">
       <div id="compose-panel">
 
@@ -627,6 +654,9 @@ let selectedContactOriginal = null;
 let currentTab = 'inbox';
 let showOnlyUnread = false;
 let allEmails = [];
+let hasMoreEmails = false;
+let hasMoreSent = false;
+let isLoadingMore = false;
 
 // ── init ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -695,12 +725,50 @@ async function loadEmails() {
       return;
     }
     allEmails = data.emails || [];
+    hasMoreEmails = data.has_more || false;
     applyFilters(activeUid);
   } catch(e) {
     document.getElementById('list-spinner').classList.remove('active');
     document.getElementById('email-list').innerHTML =
       `<li><div class="empty-state" style="color:var(--red)">Verbindung fehlgeschlagen.</div></li>`;
   }
+}
+
+async function loadMoreEmails() {
+  if (isLoadingMore || !hasMoreEmails) return;
+  isLoadingMore = true;
+  const btn = document.getElementById('load-more-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Wird geladen…'; }
+  const minUid = Math.min(...allEmails.map(e => e.uid));
+  try {
+    const r = await fetch(`/api/emails?before_uid=${minUid}`);
+    const data = await r.json();
+    if (!data.error && data.emails) {
+      allEmails = allEmails.concat(data.emails);
+      hasMoreEmails = data.has_more || false;
+      applyFilters();
+    }
+  } catch(e) {}
+  isLoadingMore = false;
+}
+
+async function loadMoreSentEmails() {
+  if (isLoadingMore || !hasMoreSent) return;
+  isLoadingMore = true;
+  const btn = document.getElementById('load-more-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Wird geladen…'; }
+  const allSent = document.querySelectorAll('[id^="sei-"]');
+  const uids = Array.from(allSent).map(el => parseInt(el.id.replace('sei-', ''))).filter(Boolean);
+  const minUid = uids.length ? Math.min(...uids) : 0;
+  try {
+    const r = await fetch(`/api/sent-emails?before_uid=${minUid}`);
+    const data = await r.json();
+    if (!data.error && data.emails) {
+      hasMoreSent = data.has_more || false;
+      appendSentList(data.emails);
+    }
+  } catch(e) {}
+  isLoadingMore = false;
 }
 
 function applyFilters(activeUid) {
@@ -733,12 +801,29 @@ async function loadSentEmails() {
         `<li><div class="empty-state" style="color:var(--red)">${data.error}</div></li>`;
       return;
     }
+    hasMoreSent = data.has_more || false;
     renderSentList(data.emails || []);
   } catch(e) {
     document.getElementById('list-spinner').classList.remove('active');
     document.getElementById('email-list').innerHTML =
       `<li><div class="empty-state" style="color:var(--red)">Verbindung fehlgeschlagen.</div></li>`;
   }
+}
+
+function _sentItemHtml(e) {
+  const name  = e.sender_name || e.sender_email || '?';
+  const color = avatarColor(name);
+  const ini   = initials(name);
+  return `<li class="email-item" onclick="loadSentEmail(${e.uid})" id="sei-${e.uid}">
+    <div class="ei-avatar" style="background:${color}">${ini}</div>
+    <div class="ei-info">
+      <div class="ei-top">
+        <span class="ei-name">An: ${esc(name)}</span>
+        <span class="ei-date">${esc(e.date)}</span>
+      </div>
+      <div class="ei-subject">${esc(e.subject)}</div>
+    </div>
+  </li>`;
 }
 
 function renderSentList(emails) {
@@ -748,22 +833,26 @@ function renderSentList(emails) {
     return;
   }
   emails.sort((a, b) => b.uid - a.uid);
-  list.innerHTML = emails.map(e => {
-    const name  = e.sender_name || e.sender_email || '?';
-    const color = avatarColor(name);
-    const ini   = initials(name);
-    return `
-      <li class="email-item" onclick="loadSentEmail(${e.uid})" id="sei-${e.uid}">
-        <div class="ei-avatar" style="background:${color}">${ini}</div>
-        <div class="ei-info">
-          <div class="ei-top">
-            <span class="ei-name">An: ${esc(name)}</span>
-            <span class="ei-date">${esc(e.date)}</span>
-          </div>
-          <div class="ei-subject">${esc(e.subject)}</div>
-        </div>
-      </li>`;
-  }).join('');
+  list.innerHTML = emails.map(_sentItemHtml).join('');
+  if (hasMoreSent) {
+    const li = document.createElement('li');
+    li.innerHTML = `<button id="load-more-btn" onclick="loadMoreSentEmails()">↓ Ältere E-Mails laden</button>`;
+    list.appendChild(li);
+  }
+}
+
+function appendSentList(emails) {
+  const list = document.getElementById('email-list');
+  const oldBtn = document.getElementById('load-more-btn');
+  if (oldBtn) oldBtn.parentElement.remove();
+  emails.sort((a, b) => b.uid - a.uid);
+  emails.forEach(e => list.insertAdjacentHTML('beforeend', _sentItemHtml(e)));
+  if (hasMoreSent) {
+    const li = document.createElement('li');
+    li.innerHTML = `<button id="load-more-btn" onclick="loadMoreSentEmails()">↓ Ältere E-Mails laden</button>`;
+    list.appendChild(li);
+  }
+  isLoadingMore = false;
 }
 
 async function loadSentEmail(uid) {
@@ -855,6 +944,12 @@ function renderEmailList(emails, activeUid) {
   if (activeUid) {
     const li = document.getElementById(`ei-${activeUid}`);
     if (li) li.classList.add('active');
+  }
+
+  if (hasMoreEmails) {
+    const li = document.createElement('li');
+    li.innerHTML = `<button id="load-more-btn" onclick="loadMoreEmails()">↓ Ältere E-Mails laden</button>`;
+    list.appendChild(li);
   }
 }
 
@@ -997,9 +1092,20 @@ function startCompose() {
   document.querySelector('.col:last-child .col-body').scrollTop = 0;
 }
 
+function startNewEmail() {
+  resetCompose();
+  document.getElementById('gen-btn').style.display   = 'none';
+  document.getElementById('email-editor').style.display = 'block';
+  document.getElementById('send-btn').style.display     = 'block';
+  document.getElementById('send-btn').disabled           = false;
+  document.getElementById('attach-section').style.display = 'none';
+  document.getElementById('to-name').focus();
+}
+
 function resetCompose() {
   currentEmail = null;
   localFiles   = [];
+  document.getElementById('gen-btn').style.display       = 'flex';
   document.getElementById('email-editor').style.display  = 'none';
   document.getElementById('send-btn').style.display      = 'none';
   document.getElementById('send-btn').disabled           = true;

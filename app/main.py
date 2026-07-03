@@ -187,10 +187,11 @@ def api_emails():
     config = load_config()
     if not config.get('imap1_email') or not config.get('imap1_password'):
         return jsonify({'error': 'Postfach 1 nicht konfiguriert. Bitte Einstellungen öffnen.'})
-    emails, error = get_unread_emails(config)
+    before_uid = request.args.get('before_uid', type=int)
+    emails, error, has_more = get_unread_emails(config, before_uid=before_uid)
     if error:
         return jsonify({'error': err(error, config.get('imap1_host'))})
-    return jsonify({'emails': emails})
+    return jsonify({'emails': emails, 'has_more': has_more})
 
 
 @app.route('/api/email/<int:uid>')
@@ -222,10 +223,11 @@ def api_sent_emails():
     config = load_config()
     if not config.get('imap2_email') or not config.get('imap2_password'):
         return jsonify({'error': 'Postfach 2 nicht konfiguriert.'})
-    emails, error = get_sent_emails(config)
+    before_uid = request.args.get('before_uid', type=int)
+    emails, error, has_more = get_sent_emails(config, before_uid=before_uid)
     if error:
         return jsonify({'error': err(error, config.get('imap2_host'))})
-    return jsonify({'emails': emails})
+    return jsonify({'emails': emails, 'has_more': has_more})
 
 
 @app.route('/api/sent-email/<int:uid>')
