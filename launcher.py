@@ -1,5 +1,7 @@
 """
 Launcher: startet Flask und öffnet Browser.
+Fehler werden in start_fehler.log geschrieben und als Popup angezeigt
+(wichtig, weil pythonw.exe keine Konsole hat und sonst still stirbt).
 """
 import os
 import sys
@@ -11,6 +13,8 @@ import urllib.request
 BASE = os.path.dirname(os.path.abspath(__file__))
 APP_DIR = os.path.join(BASE, 'app')
 VERSION_FILE = os.path.join(BASE, 'version.txt')
+ERROR_LOG = os.path.join(BASE, 'start_fehler.log')
+URL = 'http://127.0.0.1:5000'
 
 # Expose paths so the in-app updater can restart the process
 os.environ['FREDI_BASE'] = BASE
@@ -26,17 +30,48 @@ def _current_version():
         return '0.0.0'
 
 
+def _server_responds(timeout=1):
+    try:
+        urllib.request.urlopen(URL, timeout=timeout)
+        return True
+    except Exception:
+        return False
+
+
 def _open_browser():
     for _ in range(30):
-        try:
-            urllib.request.urlopen('http://localhost:5000', timeout=1)
+        if _server_responds():
             break
-        except Exception:
-            time.sleep(0.5)
-    webbrowser.open('http://localhost:5000')
+        time.sleep(0.5)
+    webbrowser.open(URL)
+
+
+def _show_error(text):
+    try:
+        with open(ERROR_LOG, 'w', encoding='utf-8') as f:
+            f.write(text)
+    except Exception:
+        pass
+    try:
+        import ctypes
+        ctypes.windll.user32.MessageBoxW(
+            0,
+            'FrediMailAssistent konnte nicht starten.\n\n'
+            + text[-1200:]
+            + f'\n\nDetails: {ERROR_LOG}',
+            'FrediMailAssistent – Fehler',
+            0x10,  # MB_ICONERROR
+        )
+    except Exception:
+        print(text)
 
 
 def main():
+    # Läuft die App schon (z.B. Doppelklick zweimal)? Dann nur Browser öffnen.
+    if _server_responds():
+        webbrowser.open(URL)
+        return
+
     print('=' * 50)
     print('  E-Mail-Assistent – SunProPower')
     print(f'  Version: {_current_version()}')
@@ -51,4 +86,9 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except Exception:
+        import traceback
+        _show_error(traceback.format_exc())
+        sys.exit(1)
