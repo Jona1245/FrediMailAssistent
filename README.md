@@ -6,10 +6,11 @@ E-Mail-Assistent für SunProPower mit KI-Antwortgenerierung (OpenRouter / Google
 
 ## Installation (Windows) – eine Datei, fertig
 
-1. **[FrediMail-Setup.bat herunterladen](https://github.com/Jona1245/FrediMailAssistent/releases/download/v1.3.2/FrediMail-Setup.bat)**  
-   *(Rechtsklick → Ziel speichern unter)*
-2. Doppelklick auf die heruntergeladene Datei – läuft alles automatisch
-3. Fertig: Das grüne **FrediMailAssistent**-Symbol erscheint auf dem Desktop
+1. **[FrediMail-Setup.zip herunterladen](https://github.com/Jona1245/FrediMailAssistent/releases/latest/download/FrediMail-Setup.zip)**
+2. ZIP öffnen → `FrediMail-Setup.bat` doppelklicken
+3. Bei der Windows-Warnung: *"Weitere Informationen"* → *"Trotzdem ausführen"*
+4. Läuft automatisch durch (2–5 Minuten) – am Ende startet die App von selbst
+5. Ab dann: Doppelklick auf das grüne **FrediMailAssistent**-Symbol auf dem Desktop
 
 > Kein Python nötig – wird automatisch heruntergeladen falls nicht vorhanden.
 
